@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/safe_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/light_background">
+
+    <!-- Lock Screen -->
+    <LinearLayout
+        android:id="@+id/lock_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_lock"
+            android:background="@drawable/bg_empty_state"
+            android:padding="20dp"
+            android:contentDescription="Lock" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/safe_locked"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/light_text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/safe_locked_desc"
+            android:textSize="14sp"
+            android:textColor="@color/light_text_secondary"
+            android:gravity="center" />
+
+        <!-- PIN Dots -->
+        <LinearLayout
+            android:id="@+id/pin_dots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:orientation="horizontal">
+
+            <View android:id="@+id/dot1" android:layout_width="16dp" android:layout_height="16dp"
+                android:layout_marginHorizontal="8dp" android:background="@drawable/bg_pin_dot" />
+            <View android:id="@+id/dot2" android:layout_width="16dp" android:layout_height="16dp"
+                android:layout_marginHorizontal="8dp" android:background="@drawable/bg_pin_dot" />
+            <View android:id="@+id/dot3" android:layout_width="16dp" android:layout_height="16dp"
+                android:layout_marginHorizontal="8dp" android:background="@drawable/bg_pin_dot" />
+            <View android:id="@+id/dot4" android:layout_width="16dp" android:layout_height="16dp"
+                android:layout_marginHorizontal="8dp" android:background="@drawable/bg_pin_dot" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_pin_error"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/error"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <!-- Number Pad -->
+        <GridLayout
+            android:id="@+id/number_pad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:columnCount="3"
+            android:rowCount="4"
+            android:alignmentMode="alignMargins">
+        </GridLayout>
+
+        <!-- Biometric Button -->
+        <LinearLayout
+            android:id="@+id/btn_biometric"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_fingerprint"
+                android:contentDescription="Fingerprint" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/use_fingerprint"
+                android:textSize="15sp"
+                android:textColor="@color/accent_blue" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Unlocked Content -->
+    <LinearLayout
+        android:id="@+id/unlocked_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:id="@+id/btn_safe_back"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_back"
+                android:visibility="gone"
+                android:contentDescription="Back" />
+
+            <TextView
+                android:id="@+id/tv_safe_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/safe_title"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/light_text_primary"
+                android:fontFamily="sans-serif-medium" />
+
+            <ImageView
+                android:id="@+id/btn_add_folder"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_add"
+                android:contentDescription="Add folder" />
+
+            <ImageView
+                android:id="@+id/btn_lock"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_lock"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Lock" />
+        </LinearLayout>
+
+        <!-- Folder Content: Tab Selector -->
+        <LinearLayout
+            android:id="@+id/tab_selector"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tab_videos"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_tab_selected"
+                android:gravity="center"
+                android:text="@string/videos_tab"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tab_photos"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_tab_unselected"
+                android:gravity="center"
+                android:text="@string/photos_tab"
+                android:textColor="@color/accent_blue"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Content -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_safe"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingHorizontal="16dp"
+                android:paddingBottom="16dp" />
+
+            <!-- Empty State for Folders -->
+            <LinearLayout
+                android:id="@+id/empty_folders"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:src="@drawable/ic_safe"
+                    android:alpha="0.3"
+                    android:background="@drawable/bg_empty_state"
+                    android:padding="24dp"
+                    android:contentDescription="No folders" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/no_safe_folders"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/light_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/no_safe_folders_desc"
+                    android:textSize="14sp"
+                    android:textColor="@color/light_text_secondary"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <!-- Empty State for Videos -->
+            <TextView
+                android:id="@+id/empty_safe_videos"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="@string/no_safe_videos"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_secondary"
+                android:visibility="gone" />
+
+            <!-- Empty State for Photos -->
+            <TextView
+                android:id="@+id/empty_safe_photos"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="@string/no_safe_photos"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_secondary"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
