@@ -11,19 +11,20 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.yolomedia.R
 import com.yolomedia.data.model.ImageItem
+import com.yolomedia.ui.common.ModernDialog
+import com.yolomedia.ui.common.ZoomableImageView
 import com.yolomedia.utils.FormatUtils
 import com.yolomedia.viewmodel.GalleryViewModel
 import com.yolomedia.viewmodel.SafeViewModel
 
 class ImageViewerActivity : AppCompatActivity() {
 
-    private lateinit var ivImage: ImageView
+    private lateinit var ivImage: ZoomableImageView
     private lateinit var btnBack: ImageView
     private lateinit var btnShare: LinearLayout
     private lateinit var btnDelete: LinearLayout
@@ -38,7 +39,11 @@ class ImageViewerActivity : AppCompatActivity() {
     private var imageUri: String? = null
     private var imagePath: String? = null
     private var imageTitle: String? = null
+    private var imageSize: Long = 0
+    private var imageDateAdded: Long = 0
+    private var imageMimeType: String = "image/*"
     private var controlsVisible = true
+    private var isSafeMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +69,10 @@ class ImageViewerActivity : AppCompatActivity() {
         imageUri = intent.getStringExtra("image_uri")
         imagePath = intent.getStringExtra("image_path")
         imageTitle = intent.getStringExtra("image_title")
+        imageSize = intent.getLongExtra("image_size", 0)
+        imageDateAdded = intent.getLongExtra("image_date", 0)
+        imageMimeType = intent.getStringExtra("image_mime") ?: "image/*"
+        isSafeMode = intent.getBooleanExtra("safe_mode", false)
 
         tvImageName.text = imageTitle ?: ""
 
@@ -73,15 +82,26 @@ class ImageViewerActivity : AppCompatActivity() {
                 .into(ivImage)
         }
 
+        if (imagePath != null && imageUri == null) {
+            Glide.with(this)
+                .load(java.io.File(imagePath!!))
+                .into(ivImage)
+        }
+
         btnBack.setOnClickListener { finish() }
 
-        ivImage.setOnClickListener { toggleControls() }
-
         btnShare.setOnClickListener {
-            imageUri?.let { uri ->
+            val shareUri = if (imageUri != null) Uri.parse(imageUri) else {
+                imagePath?.let { path ->
+                    androidx.core.content.FileProvider.getUriForFile(
+                        this, "$packageName.fileprovider", java.io.File(path)
+                    )
+                }
+            }
+            shareUri?.let { uri ->
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/*"
-                    putExtra(Intent.EXTRA_STREAM, Uri.parse(uri))
+                    type = imageMimeType
+                    putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 startActivity(Intent.createChooser(intent, getString(R.string.share)))
@@ -89,43 +109,55 @@ class ImageViewerActivity : AppCompatActivity() {
         }
 
         btnDelete.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.delete)
-                .setMessage(R.string.confirm_delete)
-                .setPositiveButton(R.string.yes) { _, _ ->
-                    imageUri?.let { uri ->
-                        try {
-                            contentResolver.delete(Uri.parse(uri), null, null)
-                            Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show()
-                            finish()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+            ModernDialog.confirm(
+                context = this,
+                title = getString(R.string.delete),
+                message = getString(R.string.confirm_delete),
+                positiveText = getString(R.string.yes),
+                negativeText = getString(R.string.no),
+                onPositive = {
+                    if (isSafeMode) {
+                        imagePath?.let { path ->
+                            java.io.File(path).delete()
+                            val metaPath = path.replace(".nomedia_photo", ".meta")
+                            java.io.File(metaPath).delete()
+                        }
+                    } else {
+                        imageUri?.let { uri ->
+                            try {
+                                contentResolver.delete(Uri.parse(uri), null, null)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     }
+                    Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
-                .setNegativeButton(R.string.no, null)
-                .show()
+            )
         }
 
         btnInfo.setOnClickListener {
             showDetailsDialog()
         }
 
-        btnMoveSafe.setOnClickListener {
-            showMoveToSafeDialog()
+        if (isSafeMode) {
+            btnMoveSafe.visibility = View.GONE
+        } else {
+            btnMoveSafe.setOnClickListener {
+                showMoveToSafeDialog()
+            }
         }
 
-        // Tint icons white
         btnBack.setColorFilter(0xFFFFFFFF.toInt())
 
-        // Entrance animation
         bottomActions.translationY = 200f
         bottomActions.animate().translationY(0f).setDuration(400).setInterpolator(DecelerateInterpolator()).start()
         topBar.alpha = 0f
         topBar.animate().alpha(1f).setDuration(300).start()
     }
 
-    private fun toggleControls() {
+    fun toggleControls() {
         controlsVisible = !controlsVisible
         val targetAlpha = if (controlsVisible) 1f else 0f
         ObjectAnimator.ofFloat(topBar, "alpha", targetAlpha).setDuration(250).start()
@@ -135,53 +167,93 @@ class ImageViewerActivity : AppCompatActivity() {
     private fun showDetailsDialog() {
         val details = StringBuilder().apply {
             append("${getString(R.string.detail_name)}: ${imageTitle ?: "Unknown"}\n\n")
-            append("${getString(R.string.detail_path)}: ${imagePath ?: "Unknown"}")
+            append("${getString(R.string.detail_path)}: ${imagePath ?: "Unknown"}\n\n")
+            if (imageSize > 0) {
+                append("${getString(R.string.detail_size)}: ${FormatUtils.formatFileSize(imageSize)}\n\n")
+            }
+            if (imageDateAdded > 0) {
+                append("${getString(R.string.detail_date)}: ${FormatUtils.formatDate(imageDateAdded)}\n\n")
+            }
+            append("${getString(R.string.detail_type)}: $imageMimeType")
         }
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.details)
-            .setMessage(details.toString())
-            .setPositiveButton(R.string.ok, null)
-            .show()
+        ModernDialog.info(
+            context = this,
+            title = getString(R.string.details),
+            message = details.toString()
+        )
     }
 
     private fun showMoveToSafeDialog() {
         val folderNames = safeViewModel.getSafeFolderNames()
 
         if (folderNames.isEmpty()) {
-            Toast.makeText(this, "Create a folder in Safe first", Toast.LENGTH_SHORT).show()
+            ModernDialog.input(
+                context = this,
+                title = getString(R.string.create_folder),
+                hint = getString(R.string.folder_name),
+                onConfirm = { name ->
+                    if (name.isNotEmpty()) {
+                        safeViewModel.createFolder(name)
+                        performMoveToSafe(name)
+                    }
+                }
+            )
             return
         }
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.select_folder)
-            .setItems(folderNames.toTypedArray()) { _, which ->
-                val folderName = folderNames[which]
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.confirm_move_safe)
-                    .setMessage("Move \"${imageTitle}\" to Safe folder \"$folderName\"?")
-                    .setPositiveButton(R.string.yes) { _, _ ->
-                        imageUri?.let { uri ->
-                            val imageItem = ImageItem(
-                                id = 0,
-                                title = imageTitle ?: "",
-                                path = imagePath ?: "",
-                                uri = Uri.parse(uri),
-                                size = 0,
-                                dateAdded = 0,
-                                dateModified = 0,
-                                mimeType = "image/*"
-                            )
-                            safeViewModel.moveImageToSafe(imageItem, folderName)
-                            Toast.makeText(this, getString(R.string.moved_successfully), Toast.LENGTH_SHORT).show()
-                            finish()
+        val options = folderNames.toMutableList()
+        options.add("+ Create New Folder")
+
+        ModernDialog.list(
+            context = this,
+            title = getString(R.string.select_folder),
+            options = options.toTypedArray(),
+            onSelect = { which ->
+                if (which < folderNames.size) {
+                    performMoveToSafe(folderNames[which])
+                } else {
+                    ModernDialog.input(
+                        context = this,
+                        title = getString(R.string.create_folder),
+                        hint = getString(R.string.folder_name),
+                        onConfirm = { name ->
+                            if (name.isNotEmpty()) {
+                                safeViewModel.createFolder(name)
+                                performMoveToSafe(name)
+                            }
                         }
-                    }
-                    .setNegativeButton(R.string.no, null)
-                    .show()
+                    )
+                }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
+    }
+
+    private fun performMoveToSafe(folderName: String) {
+        ModernDialog.confirm(
+            context = this,
+            title = getString(R.string.confirm_move_safe),
+            message = "Move \"${imageTitle}\" to Safe folder \"$folderName\"?",
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = {
+                imageUri?.let { uri ->
+                    val imageItem = ImageItem(
+                        id = 0,
+                        title = imageTitle ?: "",
+                        path = imagePath ?: "",
+                        uri = Uri.parse(uri),
+                        size = imageSize,
+                        dateAdded = imageDateAdded,
+                        dateModified = 0,
+                        mimeType = imageMimeType
+                    )
+                    safeViewModel.moveImageToSafe(imageItem, folderName)
+                    Toast.makeText(this, getString(R.string.moved_successfully), Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        )
     }
 
     private fun hideSystemUI() {

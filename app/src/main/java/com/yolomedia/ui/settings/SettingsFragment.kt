@@ -5,12 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -21,6 +19,7 @@ import com.yolomedia.data.model.ThemeMode
 import com.yolomedia.data.model.ViewMode
 import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.MainActivity
+import com.yolomedia.ui.common.ModernDialog
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.viewmodel.SettingsViewModel
 
@@ -51,6 +50,16 @@ class SettingsFragment : Fragment() {
     private lateinit var tvThumbnailQualityValue: TextView
     private lateinit var settingGridColumns: LinearLayout
     private lateinit var tvGridColumnsValue: TextView
+    private lateinit var switchNewBadge: SwitchCompat
+    private lateinit var switchResumePlayback: SwitchCompat
+    private lateinit var switchLoopVideos: SwitchCompat
+    private lateinit var switchVideoGestures: SwitchCompat
+    private lateinit var settingDoubleTapSeek: LinearLayout
+    private lateinit var tvDoubleTapSeekValue: TextView
+    private lateinit var settingClearNewBadges: LinearLayout
+    private lateinit var settingSafeAutoLock: LinearLayout
+    private lateinit var tvSafeAutoLockValue: TextView
+    private lateinit var switchSafeThumbnails: SwitchCompat
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -96,6 +105,16 @@ class SettingsFragment : Fragment() {
         tvThumbnailQualityValue = view.findViewById(R.id.tv_thumbnail_quality_value)
         settingGridColumns = view.findViewById(R.id.setting_grid_columns)
         tvGridColumnsValue = view.findViewById(R.id.tv_grid_columns_value)
+        switchNewBadge = view.findViewById(R.id.switch_new_badge)
+        switchResumePlayback = view.findViewById(R.id.switch_resume_playback)
+        switchLoopVideos = view.findViewById(R.id.switch_loop_videos)
+        switchVideoGestures = view.findViewById(R.id.switch_video_gestures)
+        settingDoubleTapSeek = view.findViewById(R.id.setting_double_tap_seek)
+        tvDoubleTapSeekValue = view.findViewById(R.id.tv_double_tap_seek_value)
+        settingClearNewBadges = view.findViewById(R.id.setting_clear_new_badges)
+        settingSafeAutoLock = view.findViewById(R.id.setting_safe_auto_lock)
+        tvSafeAutoLockValue = view.findViewById(R.id.tv_safe_auto_lock_value)
+        switchSafeThumbnails = view.findViewById(R.id.switch_safe_thumbnails)
     }
 
     private fun setupListeners() {
@@ -128,6 +147,44 @@ class SettingsFragment : Fragment() {
         switchHideSystemBars.setOnCheckedChangeListener { _, isChecked ->
             preferences.hideSystemBars = isChecked
         }
+
+        switchNewBadge.setOnCheckedChangeListener { _, isChecked ->
+            preferences.showNewBadge = isChecked
+        }
+
+        switchResumePlayback.setOnCheckedChangeListener { _, isChecked ->
+            preferences.resumePlayback = isChecked
+        }
+
+        switchLoopVideos.setOnCheckedChangeListener { _, isChecked ->
+            preferences.loopVideos = isChecked
+        }
+
+        switchVideoGestures.setOnCheckedChangeListener { _, isChecked ->
+            preferences.videoGesturesEnabled = isChecked
+        }
+
+        settingDoubleTapSeek.setOnClickListener { showDoubleTapSeekDialog() }
+
+        settingClearNewBadges.setOnClickListener {
+            ModernDialog.confirm(
+                context = requireContext(),
+                title = "Clear New Badges",
+                message = "Mark all videos as played? This will remove all NEW badges.",
+                positiveText = "Clear",
+                negativeText = "Cancel",
+                onPositive = {
+                    preferences.clearPlayedVideos()
+                    Toast.makeText(requireContext(), "All badges cleared", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        settingSafeAutoLock.setOnClickListener { showSafeAutoLockDialog() }
+
+        switchSafeThumbnails.setOnCheckedChangeListener { _, isChecked ->
+            preferences.safeShowThumbnails = isChecked
+        }
     }
 
     private fun loadPreferences() {
@@ -135,9 +192,16 @@ class SettingsFragment : Fragment() {
         switchConfirmDelete.isChecked = preferences.confirmBeforeDelete
         switchBiometric.isChecked = preferences.biometricEnabled
         switchHideSystemBars.isChecked = preferences.hideSystemBars
+        switchNewBadge.isChecked = preferences.showNewBadge
+        switchResumePlayback.isChecked = preferences.resumePlayback
+        switchLoopVideos.isChecked = preferences.loopVideos
+        switchVideoGestures.isChecked = preferences.videoGesturesEnabled
+        switchSafeThumbnails.isChecked = preferences.safeShowThumbnails
         updatePlaybackSpeedText()
         updateThumbnailQualityText()
         updateGridColumnsText()
+        updateDoubleTapSeekText()
+        updateSafeAutoLockText()
     }
 
     private fun observeData() {
@@ -206,9 +270,12 @@ class SettingsFragment : Fragment() {
             else -> 0
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_theme)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_theme),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 val mode = when (which) {
                     0 -> ThemeMode.LIGHT
                     1 -> ThemeMode.DARK
@@ -217,11 +284,9 @@ class SettingsFragment : Fragment() {
                 }
                 viewModel.setThemeMode(mode)
                 ThemeManager.applyTheme(mode)
-                dialog.dismiss()
                 (activity as? MainActivity)?.recreate()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showAccentColorDialog() {
@@ -246,30 +311,32 @@ class SettingsFragment : Fragment() {
         val currentColor = viewModel.accentColor.value ?: colors[0]
         val currentIndex = colors.indexOf(currentColor).coerceAtLeast(0)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_accent_color)
-            .setSingleChoiceItems(colorNames, currentIndex) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_accent_color),
+            options = colorNames,
+            selectedIndex = currentIndex,
+            onSelect = { which ->
                 viewModel.setAccentColor(colors[which])
-                dialog.dismiss()
                 (activity as? MainActivity)?.applyThemeColors()
                 applyTheme()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showViewModeDialog() {
         val options = arrayOf(getString(R.string.view_grid), getString(R.string.view_list))
         val current = if (viewModel.viewMode.value == ViewMode.GRID) 0 else 1
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_view_mode)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_view_mode),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 viewModel.setViewMode(if (which == 0) ViewMode.GRID else ViewMode.LIST)
-                dialog.dismiss()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showSortDialog() {
@@ -285,15 +352,16 @@ class SettingsFragment : Fragment() {
         )
         val current = orders.indexOf(viewModel.sortOrder.value).coerceAtLeast(0)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_sort_order)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_sort_order),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 viewModel.setSortOrder(orders[which])
-                dialog.dismiss()
                 (activity as? MainActivity)?.refreshCurrentFragment()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showBottomBarDialog() {
@@ -305,15 +373,16 @@ class SettingsFragment : Fragment() {
         val styles = arrayOf(BottomBarStyle.FIXED, BottomBarStyle.FLOATING, BottomBarStyle.COMPACT)
         val current = styles.indexOf(viewModel.bottomBarStyle.value).coerceAtLeast(0)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_bottom_bar_style)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_bottom_bar_style),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 viewModel.setBottomBarStyle(styles[which])
-                dialog.dismiss()
                 (activity as? MainActivity)?.applyBottomBarStyle()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showPlaybackSpeedDialog() {
@@ -326,29 +395,26 @@ class SettingsFragment : Fragment() {
         val currentSpeed = preferences.defaultPlaybackSpeed
         val current = speeds.indexOfFirst { it == currentSpeed }.coerceAtLeast(2)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_default_speed)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_default_speed),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 preferences.defaultPlaybackSpeed = speeds[which]
                 updatePlaybackSpeedText()
-                dialog.dismiss()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showChangePinDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = "Enter new 4-digit PIN"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            setPadding(64, 32, 64, 16)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_change_pin)
-            .setView(input)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                val newPin = input.text.toString().trim()
+        ModernDialog.input(
+            context = requireContext(),
+            title = getString(R.string.settings_change_pin),
+            hint = "Enter new 4-digit PIN",
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD,
+            positiveText = getString(R.string.confirm),
+            onConfirm = { newPin ->
                 if (newPin.length == 4) {
                     preferences.safePin = newPin
                     Toast.makeText(requireContext(), "PIN updated", Toast.LENGTH_SHORT).show()
@@ -356,8 +422,7 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(requireContext(), "PIN must be 4 digits", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showThumbnailQualityDialog() {
@@ -368,15 +433,16 @@ class SettingsFragment : Fragment() {
         )
         val current = preferences.thumbnailQuality
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_thumbnail_quality)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_thumbnail_quality),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 preferences.thumbnailQuality = which
                 updateThumbnailQualityText()
-                dialog.dismiss()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showGridColumnsDialog() {
@@ -390,16 +456,17 @@ class SettingsFragment : Fragment() {
         val currentCol = preferences.gridColumnCount
         val current = columns.indexOfFirst { it == currentCol }.coerceAtLeast(1)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.settings_grid_columns)
-            .setSingleChoiceItems(options, current) { dialog, which ->
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = getString(R.string.settings_grid_columns),
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
                 preferences.gridColumnCount = columns[which]
                 updateGridColumnsText()
-                dialog.dismiss()
                 (activity as? MainActivity)?.refreshCurrentFragment()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun updatePlaybackSpeedText() {
@@ -424,6 +491,54 @@ class SettingsFragment : Fragment() {
 
     private fun updateGridColumnsText() {
         tvGridColumnsValue.text = "${preferences.gridColumnCount} Columns"
+    }
+
+    private fun updateDoubleTapSeekText() {
+        tvDoubleTapSeekValue.text = "${preferences.doubleTapSeekDuration} seconds"
+    }
+
+    private fun updateSafeAutoLockText() {
+        tvSafeAutoLockValue.text = when (preferences.safeAutoLockDelay) {
+            0 -> "Immediately"
+            30 -> "30 seconds"
+            60 -> "1 minute"
+            300 -> "5 minutes"
+            else -> "Immediately"
+        }
+    }
+
+    private fun showDoubleTapSeekDialog() {
+        val options = arrayOf("5 seconds", "10 seconds", "15 seconds", "30 seconds")
+        val values = intArrayOf(5, 10, 15, 30)
+        val current = values.indexOfFirst { it == preferences.doubleTapSeekDuration }.coerceAtLeast(1)
+
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = "Double Tap Seek Duration",
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
+                preferences.doubleTapSeekDuration = values[which]
+                updateDoubleTapSeekText()
+            }
+        )
+    }
+
+    private fun showSafeAutoLockDialog() {
+        val options = arrayOf("Immediately", "30 seconds", "1 minute", "5 minutes")
+        val values = intArrayOf(0, 30, 60, 300)
+        val current = values.indexOfFirst { it == preferences.safeAutoLockDelay }.coerceAtLeast(0)
+
+        ModernDialog.singleChoice(
+            context = requireContext(),
+            title = "Auto Lock Delay",
+            options = options,
+            selectedIndex = current,
+            onSelect = { which ->
+                preferences.safeAutoLockDelay = values[which]
+                updateSafeAutoLockText()
+            }
+        )
     }
 
     private fun applyTheme() {

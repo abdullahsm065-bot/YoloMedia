@@ -5,12 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -21,6 +19,7 @@ import com.yolomedia.R
 import com.yolomedia.data.model.ImageItem
 import com.yolomedia.data.model.SortOrder
 import com.yolomedia.data.preferences.AppPreferences
+import com.yolomedia.ui.common.ModernDialog
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 import com.yolomedia.viewmodel.GalleryViewModel
@@ -115,14 +114,14 @@ class GalleryFragment : Fragment() {
     }
 
     private fun showDeleteDialog(image: ImageItem) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.delete)
-            .setMessage(R.string.confirm_delete)
-            .setPositiveButton(R.string.yes) { _, _ ->
-                viewModel.deleteImage(image)
-            }
-            .setNegativeButton(R.string.no, null)
-            .show()
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = getString(R.string.delete),
+            message = getString(R.string.confirm_delete),
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = { viewModel.deleteImage(image) }
+        )
     }
 
     private fun showDetailsDialog(image: ImageItem) {
@@ -135,11 +134,11 @@ class GalleryFragment : Fragment() {
             append("${getString(R.string.detail_type)}: ${image.mimeType}")
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.details)
-            .setMessage(details.toString())
-            .setPositiveButton(R.string.ok, null)
-            .show()
+        ModernDialog.info(
+            context = requireContext(),
+            title = getString(R.string.details),
+            message = details.toString()
+        )
     }
 
     private fun showMoveToSafeDialog(image: ImageItem) {
@@ -153,44 +152,42 @@ class GalleryFragment : Fragment() {
         val options = folderNames.toMutableList()
         options.add("+ Create New Folder")
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.select_folder)
-            .setItems(options.toTypedArray()) { _, which ->
+        ModernDialog.list(
+            context = requireContext(),
+            title = getString(R.string.select_folder),
+            options = options.toTypedArray(),
+            onSelect = { which ->
                 if (which < folderNames.size) {
                     confirmMoveToSafe(image, folderNames[which])
                 } else {
                     showCreateFolderForSafeDialog(image)
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showCreateFolderForSafeDialog(image: ImageItem) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.folder_name)
-            setPadding(64, 32, 64, 16)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.create_folder)
-            .setView(input)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                val name = input.text.toString().trim()
+        ModernDialog.input(
+            context = requireContext(),
+            title = getString(R.string.create_folder),
+            hint = getString(R.string.folder_name),
+            onConfirm = { name ->
                 if (name.isNotEmpty()) {
                     safeViewModel.createFolder(name)
                     confirmMoveToSafe(image, name)
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun confirmMoveToSafe(image: ImageItem, folderName: String) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.confirm_move_safe)
-            .setMessage("Move \"${image.title}\" to Safe folder \"$folderName\"?")
-            .setPositiveButton(R.string.yes) { _, _ ->
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = getString(R.string.confirm_move_safe),
+            message = "Move \"${image.title}\" to Safe folder \"$folderName\"?",
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = {
                 safeViewModel.moveImageToSafe(image, folderName)
                 safeViewModel.operationResult.observe(viewLifecycleOwner) { result ->
                     if (result != null) {
@@ -198,17 +195,17 @@ class GalleryFragment : Fragment() {
                             is SafeViewModel.OperationResult.Success -> result.message
                             is SafeViewModel.OperationResult.Error -> result.message
                         }
-                        AlertDialog.Builder(requireContext())
-                            .setMessage(msg)
-                            .setPositiveButton(R.string.ok, null)
-                            .show()
+                        ModernDialog.info(
+                            context = requireContext(),
+                            title = if (result is SafeViewModel.OperationResult.Success) "Success" else "Error",
+                            message = msg
+                        )
                         safeViewModel.clearOperationResult()
                         viewModel.loadImages()
                     }
                 }
             }
-            .setNegativeButton(R.string.no, null)
-            .show()
+        )
     }
 
     private fun shareImage(image: ImageItem) {

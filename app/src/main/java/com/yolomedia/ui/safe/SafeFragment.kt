@@ -1,5 +1,6 @@
 package com.yolomedia.ui.safe
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -10,7 +11,7 @@ import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -22,6 +23,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.yolomedia.R
 import com.yolomedia.data.model.SafeFolder
 import com.yolomedia.data.repository.SafeMediaItem
+import com.yolomedia.ui.common.ModernDialog
+import com.yolomedia.ui.gallery.ImageViewerActivity
+import com.yolomedia.ui.player.VideoPlayerActivity
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.viewmodel.SafeViewModel
 
@@ -51,6 +55,7 @@ class SafeFragment : Fragment() {
     private var setupPin = ""
     private var isConfirmingPin = false
     private var showingVideos = true
+    private var biometricAutoTriggered = false
 
     private val folderAdapter = SafeFolderAdapter(
         onFolderClick = { folder -> viewModel.openFolder(folder) },
@@ -59,6 +64,7 @@ class SafeFragment : Fragment() {
     )
 
     private val mediaAdapter = SafeMediaAdapter(
+        onItemClick = { item -> openSafeMedia(item) },
         onRestoreClick = { item -> showRestoreDialog(item) },
         onDeleteClick = { item -> showDeleteMediaDialog(item) }
     )
@@ -86,6 +92,43 @@ class SafeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         applyTheme()
+
+        if (viewModel.isAuthenticated.value != true && !isSettingUp && !biometricAutoTriggered) {
+            autoTriggerBiometric()
+        }
+    }
+
+    private fun autoTriggerBiometric() {
+        if (!viewModel.preferences.isSafeSetup || !viewModel.preferences.biometricEnabled) return
+
+        val biometricManager = BiometricManager.from(requireContext())
+        val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+        val canWeak = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+        val canAuthenticate = canStrong == BiometricManager.BIOMETRIC_SUCCESS ||
+                canWeak == BiometricManager.BIOMETRIC_SUCCESS
+
+        if (canAuthenticate) {
+            biometricAutoTriggered = true
+            showBiometricPrompt()
+        }
+    }
+
+    private fun openSafeMedia(item: SafeMediaItem) {
+        if (item.isVideo) {
+            val intent = Intent(requireContext(), VideoPlayerActivity::class.java).apply {
+                putExtra("video_uri", item.uri.toString())
+                putExtra("video_title", item.name)
+            }
+            startActivity(intent)
+        } else {
+            val intent = Intent(requireContext(), ImageViewerActivity::class.java).apply {
+                putExtra("image_path", item.path)
+                putExtra("image_title", item.name)
+                putExtra("image_size", item.size)
+                putExtra("safe_mode", true)
+            }
+            startActivity(intent)
+        }
     }
 
     private fun bindViews(view: View) {
@@ -172,7 +215,10 @@ class SafeFragment : Fragment() {
 
         btnAddFolder.setOnClickListener { showCreateFolderDialog() }
 
-        btnLock.setOnClickListener { viewModel.lockSafe() }
+        btnLock.setOnClickListener {
+            viewModel.lockSafe()
+            biometricAutoTriggered = false
+        }
 
         btnSafeBack.setOnClickListener { viewModel.goBack() }
 
@@ -268,10 +314,11 @@ class SafeFragment : Fragment() {
                     is SafeViewModel.OperationResult.Success -> result.message
                     is SafeViewModel.OperationResult.Error -> result.message
                 }
-                AlertDialog.Builder(requireContext())
-                    .setMessage(msg)
-                    .setPositiveButton(R.string.ok, null)
-                    .show()
+                ModernDialog.info(
+                    context = requireContext(),
+                    title = if (result is SafeViewModel.OperationResult.Success) "Success" else "Error",
+                    message = msg
+                )
                 viewModel.clearOperationResult()
             }
         }
@@ -397,75 +444,79 @@ class SafeFragment : Fragment() {
     }
 
     private fun showCreateFolderDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.folder_name)
-            setPadding(64, 32, 64, 16)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.create_folder)
-            .setView(input)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                val name = input.text.toString().trim()
+        ModernDialog.input(
+            context = requireContext(),
+            title = getString(R.string.create_folder),
+            hint = getString(R.string.folder_name),
+            onConfirm = { name ->
                 if (name.isNotEmpty()) {
                     viewModel.createFolder(name)
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showDeleteFolderDialog(folder: SafeFolder) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.delete)
-            .setMessage("Delete folder \"${folder.name}\" and all its contents?")
-            .setPositiveButton(R.string.yes) { _, _ ->
-                viewModel.deleteFolder(folder.name)
-            }
-            .setNegativeButton(R.string.no, null)
-            .show()
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = getString(R.string.delete),
+            message = "Delete folder \"${folder.name}\" and all its contents?",
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = { viewModel.deleteFolder(folder.name) }
+        )
     }
 
     private fun showRenameFolderDialog(folder: SafeFolder) {
-        val input = EditText(requireContext()).apply {
-            setText(folder.name)
-            setPadding(64, 32, 64, 16)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.rename)
-            .setView(input)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                val newName = input.text.toString().trim()
+        ModernDialog.input(
+            context = requireContext(),
+            title = getString(R.string.rename),
+            hint = getString(R.string.folder_name),
+            initialText = folder.name,
+            onConfirm = { newName ->
                 if (newName.isNotEmpty() && newName != folder.name) {
                     viewModel.renameFolder(folder.name, newName)
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        )
     }
 
     private fun showRestoreDialog(item: SafeMediaItem) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.restore)
-            .setMessage("Restore \"${item.name}\" to your gallery?")
-            .setPositiveButton(R.string.yes) { _, _ ->
-                viewModel.restoreMedia(item.path)
-            }
-            .setNegativeButton(R.string.no, null)
-            .show()
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = getString(R.string.restore),
+            message = "Restore \"${item.name}\" to your gallery?",
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = { viewModel.restoreMedia(item.path) }
+        )
     }
 
     private fun showDeleteMediaDialog(item: SafeMediaItem) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.delete)
-            .setMessage("Permanently delete \"${item.name}\"?")
-            .setPositiveButton(R.string.yes) { _, _ ->
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = getString(R.string.delete),
+            message = "Permanently delete \"${item.name}\"?",
+            positiveText = getString(R.string.yes),
+            negativeText = getString(R.string.no),
+            onPositive = {
                 java.io.File(item.path).delete()
                 viewModel.currentFolder.value?.let { viewModel.openFolder(it) }
             }
-            .setNegativeButton(R.string.no, null)
-            .show()
+        )
+    }
+
+    fun handleBackPress(): Boolean {
+        if (viewModel.isAuthenticated.value == true) {
+            if (viewModel.currentFolder.value != null) {
+                viewModel.goBack()
+                return true
+            }
+            viewModel.lockSafe()
+            biometricAutoTriggered = false
+            return true
+        }
+        return false
     }
 
     private fun applyTheme() {

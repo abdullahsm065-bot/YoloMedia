@@ -18,6 +18,7 @@ import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 
 class SafeMediaAdapter(
+    private val onItemClick: (SafeMediaItem) -> Unit,
     private val onRestoreClick: (SafeMediaItem) -> Unit,
     private val onDeleteClick: (SafeMediaItem) -> Unit
 ) : ListAdapter<SafeMediaItem, SafeMediaAdapter.ViewHolder>(DiffCallback()) {
@@ -46,7 +47,7 @@ class SafeMediaAdapter(
 
             val info = StringBuilder(FormatUtils.formatFileSize(item.size))
             if (item.isVideo && item.duration > 0) {
-                info.append(" • ${FormatUtils.formatDuration(item.duration)}")
+                info.append(" \u2022 ${FormatUtils.formatDuration(item.duration)}")
             }
             tvInfo.text = info.toString()
 
@@ -64,6 +65,7 @@ class SafeMediaAdapter(
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivThumbnail)
 
+            itemView.setOnClickListener { onItemClick(item) }
             btnRestore.setOnClickListener { onRestoreClick(item) }
             btnDelete.setOnClickListener { onDeleteClick(item) }
         }

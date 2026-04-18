@@ -83,4 +83,47 @@ class AppPreferences(context: Context) {
     var safePinLength: Int
         get() = prefs.getInt("safe_pin_length", 4)
         set(value) = prefs.edit().putInt("safe_pin_length", value).apply()
+
+    fun isVideoPlayed(uri: String): Boolean {
+        val played = prefs.getStringSet("played_videos", emptySet()) ?: emptySet()
+        return uri in played
+    }
+
+    fun markVideoPlayed(uri: String) {
+        val played = (prefs.getStringSet("played_videos", emptySet()) ?: emptySet()).toMutableSet()
+        played.add(uri)
+        prefs.edit().putStringSet("played_videos", played).apply()
+    }
+
+    fun clearPlayedVideos() {
+        prefs.edit().remove("played_videos").apply()
+    }
+
+    var showNewBadge: Boolean
+        get() = prefs.getBoolean("show_new_badge", true)
+        set(value) = prefs.edit().putBoolean("show_new_badge", value).apply()
+
+    var resumePlayback: Boolean
+        get() = prefs.getBoolean("resume_playback", true)
+        set(value) = prefs.edit().putBoolean("resume_playback", value).apply()
+
+    var loopVideos: Boolean
+        get() = prefs.getBoolean("loop_videos", false)
+        set(value) = prefs.edit().putBoolean("loop_videos", value).apply()
+
+    var safeAutoLockDelay: Int
+        get() = prefs.getInt("safe_auto_lock_delay", 0)
+        set(value) = prefs.edit().putInt("safe_auto_lock_delay", value).apply()
+
+    var safeShowThumbnails: Boolean
+        get() = prefs.getBoolean("safe_show_thumbnails", true)
+        set(value) = prefs.edit().putBoolean("safe_show_thumbnails", value).apply()
+
+    var videoGesturesEnabled: Boolean
+        get() = prefs.getBoolean("video_gestures_enabled", true)
+        set(value) = prefs.edit().putBoolean("video_gestures_enabled", value).apply()
+
+    var doubleTapSeekDuration: Int
+        get() = prefs.getInt("double_tap_seek_duration", 10)
+        set(value) = prefs.edit().putInt("double_tap_seek_duration", value).apply()
 }

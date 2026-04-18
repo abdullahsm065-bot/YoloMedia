@@ -15,8 +15,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -24,6 +24,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.yolomedia.R
 import com.yolomedia.data.model.BottomBarStyle
 import com.yolomedia.data.preferences.AppPreferences
+import com.yolomedia.ui.common.ModernDialog
 import com.yolomedia.ui.gallery.GalleryFragment
 import com.yolomedia.ui.safe.SafeFragment
 import com.yolomedia.ui.settings.SettingsFragment
@@ -74,6 +75,7 @@ class MainActivity : AppCompatActivity() {
         bottomNav = findViewById(R.id.bottom_navigation)
 
         setupBottomNav()
+        setupBackPress()
         applyThemeColors()
         applyBottomBarStyle()
 
@@ -93,6 +95,31 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("current_tag", currentFragmentTag)
+    }
+
+    private fun setupBackPress() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val currentFragment = supportFragmentManager.findFragmentByTag(currentFragmentTag)
+
+                when (currentFragment) {
+                    is VideosFragment -> {
+                        if (currentFragment.handleBackPress()) return
+                    }
+                    is SafeFragment -> {
+                        if (currentFragment.handleBackPress()) return
+                    }
+                }
+
+                if (currentFragmentTag != TAG_VIDEOS) {
+                    bottomNav.selectedItemId = R.id.nav_videos
+                    return
+                }
+
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        })
     }
 
     private fun setupBottomNav() {
@@ -128,31 +155,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPermissionDialog() {
-        val dialogView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(64, 48, 64, 24)
-        }
-
-        val title = TextView(this).apply {
-            text = getString(R.string.permission_required)
-            textSize = 20f
-            setTextColor(ThemeManager.getTextPrimaryColor(this@MainActivity))
-            setPadding(0, 0, 0, 16)
-        }
-
-        val message = TextView(this).apply {
-            text = getString(R.string.permission_desc)
-            textSize = 14f
-            setTextColor(ThemeManager.getTextSecondaryColor(this@MainActivity))
-        }
-
-        dialogView.addView(title)
-        dialogView.addView(message)
-
-        AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(false)
-            .setPositiveButton(R.string.grant_permission) { _, _ ->
+        ModernDialog.confirm(
+            context = this,
+            title = getString(R.string.permission_required),
+            message = getString(R.string.permission_desc),
+            positiveText = getString(R.string.grant_permission),
+            negativeText = getString(R.string.cancel),
+            onPositive = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
                         data = Uri.parse("package:$packageName")
@@ -161,12 +170,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     permissionLauncher.launch(PermissionUtils.getRequiredPermissions())
                 }
-            }
-            .setNegativeButton(R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-                loadCurrentFragment()
-            }
-            .show()
+            },
+            onNegative = { loadCurrentFragment() }
+        )
     }
 
     private fun loadCurrentFragment() {

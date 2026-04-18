@@ -1,19 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/player_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/player_background">
 
-    <androidx.media3.ui.PlayerView
-        android:id="@+id/player_view"
+    <SurfaceView
+        android:id="@+id/surface_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:show_timeout="4000"
-        app:use_controller="false"
-        app:resize_mode="fit"
-        app:show_buffering="never" />
+        android:layout_gravity="center" />
+
+    <!-- Frame Preview (shown during seek scrubbing) -->
+    <ImageView
+        android:id="@+id/preview_frame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        android:contentDescription="Preview" />
+
+    <!-- Gesture Info Overlay -->
+    <TextView
+        android:id="@+id/gesture_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_player_button"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- Buffering Indicator -->
+    <ProgressBar
+        android:id="@+id/buffering_indicator"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:indeterminate="true" />
 
     <!-- Custom Controls Overlay -->
     <FrameLayout
@@ -53,6 +82,16 @@
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end" />
+
+            <ImageView
+                android:id="@+id/btn_lock"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_lock"
+                android:alpha="0.7"
+                android:background="@drawable/bg_player_button"
+                android:contentDescription="Lock" />
         </LinearLayout>
 
         <!-- Center Play/Pause Controls -->
@@ -64,7 +103,6 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- Seek Back -->
             <FrameLayout
                 android:id="@+id/btn_seek_back"
                 android:layout_width="56dp"
@@ -79,7 +117,6 @@
                     android:contentDescription="Seek back" />
             </FrameLayout>
 
-            <!-- Play/Pause -->
             <FrameLayout
                 android:id="@+id/btn_play_pause"
                 android:layout_width="72dp"
@@ -96,7 +133,6 @@
                     android:contentDescription="Play/Pause" />
             </FrameLayout>
 
-            <!-- Seek Forward -->
             <FrameLayout
                 android:id="@+id/btn_seek_forward"
                 android:layout_width="56dp"
@@ -123,85 +159,93 @@
             android:paddingHorizontal="16dp"
             android:paddingBottom="16dp">
 
-            <!-- Seek Bar -->
             <SeekBar
                 android:id="@+id/seek_bar"
                 android:layout_width="match_parent"
-                android:layout_height="32dp"
+                android:layout_height="wrap_content"
+                android:max="1000"
+                android:paddingVertical="8dp"
                 android:progressDrawable="@drawable/bg_seek_progress"
-                android:thumbTint="@color/white"
-                android:max="1000" />
+                android:thumb="@null" />
 
-            <!-- Time and controls row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="4dp">
+                android:gravity="center_vertical">
 
                 <TextView
                     android:id="@+id/tv_current_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="0:00"
                     android:textColor="#CCFFFFFF"
-                    android:textSize="13sp"
-                    android:text="0:00" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#66FFFFFF"
-                    android:textSize="13sp"
                     android:text=" / "
-                    android:layout_marginHorizontal="2dp" />
+                    android:textColor="#80FFFFFF"
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/tv_duration"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#99FFFFFF"
-                    android:textSize="13sp"
-                    android:text="0:00" />
+                    android:text="0:00"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp" />
 
                 <View
                     android:layout_width="0dp"
                     android:layout_height="0dp"
                     android:layout_weight="1" />
 
-                <!-- Playback Speed -->
                 <TextView
                     android:id="@+id/btn_speed"
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
+                    android:layout_height="wrap_content"
                     android:text="1x"
                     android:textColor="@color/white"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:background="@drawable/bg_player_button" />
+                    android:background="@drawable/bg_player_button"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp" />
 
-                <!-- Fullscreen -->
                 <ImageView
-                    android:id="@+id/btn_fullscreen"
+                    android:id="@+id/btn_loop"
                     android:layout_width="36dp"
                     android:layout_height="36dp"
-                    android:layout_marginStart="12dp"
-                    android:padding="6dp"
+                    android:padding="8dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_restore"
+                    android:alpha="0.5"
+                    android:background="@drawable/bg_player_button"
+                    android:contentDescription="Loop" />
+
+                <ImageView
+                    android:id="@+id/btn_aspect"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:padding="8dp"
+                    android:layout_marginStart="8dp"
                     android:src="@drawable/ic_fullscreen"
                     android:background="@drawable/bg_player_button"
-                    android:contentDescription="Fullscreen" />
+                    android:contentDescription="Aspect" />
+
+                <ImageView
+                    android:id="@+id/btn_rotate"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:padding="8dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_fullscreen"
+                    android:background="@drawable/bg_player_button"
+                    android:contentDescription="Rotate" />
             </LinearLayout>
         </LinearLayout>
-
-        <!-- Buffering Indicator -->
-        <ProgressBar
-            android:id="@+id/buffering_indicator"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="center"
-            android:visibility="gone"
-            android:indeterminateTint="@color/white" />
     </FrameLayout>
+
 </FrameLayout>

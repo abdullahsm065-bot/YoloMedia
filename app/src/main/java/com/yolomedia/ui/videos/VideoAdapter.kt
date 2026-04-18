@@ -15,6 +15,7 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.yolomedia.R
 import com.yolomedia.data.model.VideoItem
+import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 
@@ -43,9 +44,11 @@ class VideoAdapter(
         private val tvInfo: TextView = itemView.findViewById(R.id.tv_info)
         private val tvDuration: TextView = itemView.findViewById(R.id.tv_duration)
         private val btnMore: ImageView = itemView.findViewById(R.id.btn_more)
+        private val tvNewBadge: TextView = itemView.findViewById(R.id.tv_new_badge)
 
         fun bind(video: VideoItem) {
             val context = itemView.context
+            val prefs = AppPreferences(context)
 
             tvTitle.text = video.title
             tvInfo.text = FormatUtils.formatFileSize(video.size)
@@ -55,6 +58,18 @@ class VideoAdapter(
             tvTitle.setTextColor(ThemeManager.getTextPrimaryColor(context))
             tvInfo.setTextColor(ThemeManager.getTextSecondaryColor(context))
             ThemeManager.tintIcon(btnMore, context)
+
+            if (prefs.showNewBadge && !prefs.isVideoPlayed(video.uri.toString())) {
+                tvNewBadge.visibility = View.VISIBLE
+                val accentColor = ThemeManager.getAccentColor(context)
+                val badgeBg = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(accentColor)
+                    cornerRadius = 6f * context.resources.displayMetrics.density
+                }
+                tvNewBadge.background = badgeBg
+            } else {
+                tvNewBadge.visibility = View.GONE
+            }
 
             Glide.with(context)
                 .load(video.uri)
