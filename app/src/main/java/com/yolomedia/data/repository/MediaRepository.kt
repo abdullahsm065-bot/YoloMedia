@@ -72,7 +72,7 @@ class MediaRepository(private val context: Context) {
                             id = id,
                             title = cursor.getString(nameCol) ?: "Unknown",
                             path = path,
-                            uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id),
+                            uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString(),
                             duration = cursor.getLong(durationCol),
                             size = cursor.getLong(sizeCol),
                             dateAdded = cursor.getLong(dateAddedCol),
@@ -186,7 +186,7 @@ class MediaRepository(private val context: Context) {
                 MediaFolder(
                     name = items.first().folderName,
                     path = path,
-                    thumbnailUri = items.firstOrNull()?.uri,
+                    thumbnailUri = items.firstOrNull()?.uri?.toString(),
                     mediaCount = items.size,
                     totalSize = items.sumOf { it.size }
                 )

@@ -13,11 +13,14 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.yolomedia.R
 import com.yolomedia.data.model.MediaFolder
+import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 
 class VideoFolderAdapter(
-    private val onFolderClick: (MediaFolder) -> Unit
+    private val onFolderClick: (MediaFolder) -> Unit,
+    private val onReelClick: ((MediaFolder) -> Unit)? = null,
+    private val onToggleReel: ((MediaFolder) -> Unit)? = null
 ) : ListAdapter<MediaFolder, VideoFolderAdapter.ViewHolder>(DiffCallback()) {
 
     private var animationsEnabled = true
@@ -59,15 +62,23 @@ class VideoFolderAdapter(
         fun bind(folder: MediaFolder) {
             val context = itemView.context
             val accentColor = ThemeManager.getAccentColor(context)
+            val prefs = AppPreferences(context)
+            val isReel = prefs.isReelFolder(folder.path)
 
             tvFolderName.text = folder.name
-            tvFolderInfo.text = "${folder.mediaCount} videos \u2022 ${FormatUtils.formatFileSize(folder.totalSize)}"
+            val reelLabel = if (isReel) " • Reel" else ""
+            tvFolderInfo.text = "${folder.mediaCount} videos • ${FormatUtils.formatFileSize(folder.totalSize)}$reelLabel"
             tvCount.text = "${folder.mediaCount}"
 
             cardView.setCardBackgroundColor(ThemeManager.getCardColor(context))
             tvFolderName.setTextColor(ThemeManager.getTextPrimaryColor(context))
             tvFolderInfo.setTextColor(ThemeManager.getTextSecondaryColor(context))
 
+            if (isReel) {
+                ivFolderIcon.setImageResource(R.drawable.ic_reel)
+            } else {
+                ivFolderIcon.setImageResource(R.drawable.ic_folder)
+            }
             ivFolderIcon.setColorFilter(accentColor)
 
             val bgDrawable = GradientDrawable().apply {
@@ -81,7 +92,18 @@ class VideoFolderAdapter(
                 countBg.setColor(accentColor)
             }
 
-            itemView.setOnClickListener { onFolderClick(folder) }
+            itemView.setOnClickListener {
+                if (isReel) {
+                    onReelClick?.invoke(folder) ?: onFolderClick(folder)
+                } else {
+                    onFolderClick(folder)
+                }
+            }
+
+            itemView.setOnLongClickListener {
+                onToggleReel?.invoke(folder)
+                true
+            }
         }
     }
 

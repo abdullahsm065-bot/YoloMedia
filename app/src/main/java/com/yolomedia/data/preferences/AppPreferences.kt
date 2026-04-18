@@ -142,4 +142,38 @@ class AppPreferences(context: Context) {
     var showDurationBadge: Boolean
         get() = prefs.getBoolean("show_duration_badge", true)
         set(value) = prefs.edit().putBoolean("show_duration_badge", value).apply()
+
+    var reelsAutoPlay: Boolean
+        get() = prefs.getBoolean("reels_auto_play", true)
+        set(value) = prefs.edit().putBoolean("reels_auto_play", value).apply()
+
+    var reelsLoop: Boolean
+        get() = prefs.getBoolean("reels_loop", true)
+        set(value) = prefs.edit().putBoolean("reels_loop", value).apply()
+
+    var cropThumbnails: Boolean
+        get() = prefs.getBoolean("crop_thumbnails", true)
+        set(value) = prefs.edit().putBoolean("crop_thumbnails", value).apply()
+
+    var rememberLastFolder: Boolean
+        get() = prefs.getBoolean("remember_last_folder", false)
+        set(value) = prefs.edit().putBoolean("remember_last_folder", value).apply()
+
+    fun clearReelFolders() {
+        prefs.edit().putStringSet("reel_folders", emptySet()).apply()
+    }
+
+    fun getReelFolders(): Set<String> {
+        return prefs.getStringSet("reel_folders", emptySet()) ?: emptySet()
+    }
+
+    fun toggleReelFolder(folderPath: String) {
+        val folders = getReelFolders().toMutableSet()
+        if (folders.contains(folderPath)) folders.remove(folderPath) else folders.add(folderPath)
+        prefs.edit().putStringSet("reel_folders", folders).apply()
+    }
+
+    fun isReelFolder(folderPath: String): Boolean {
+        return folderPath in getReelFolders()
+    }
 }

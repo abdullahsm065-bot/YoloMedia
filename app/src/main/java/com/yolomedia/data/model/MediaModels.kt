@@ -1,12 +1,14 @@
 package com.yolomedia.data.model
 
 import android.net.Uri
+import android.os.Parcel
+import android.os.Parcelable
 
 data class VideoItem(
     val id: Long,
     val title: String,
     val path: String,
-    val uri: Uri,
+    val uri: String,
     val duration: Long,
     val size: Long,
     val dateAdded: Long,
@@ -16,7 +18,48 @@ data class VideoItem(
     val folderName: String = "",
     val folderPath: String = "",
     val mimeType: String = ""
-)
+) : Parcelable {
+    val name: String get() = title
+
+    constructor(parcel: Parcel) : this(
+        parcel.readLong(),
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: ""
+    )
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeLong(id)
+        parcel.writeString(title)
+        parcel.writeString(path)
+        parcel.writeString(uri)
+        parcel.writeLong(duration)
+        parcel.writeLong(size)
+        parcel.writeLong(dateAdded)
+        parcel.writeLong(dateModified)
+        parcel.writeInt(width)
+        parcel.writeInt(height)
+        parcel.writeString(folderName)
+        parcel.writeString(folderPath)
+        parcel.writeString(mimeType)
+    }
+
+    override fun describeContents(): Int = 0
+
+    companion object CREATOR : Parcelable.Creator<VideoItem> {
+        override fun createFromParcel(parcel: Parcel): VideoItem = VideoItem(parcel)
+        override fun newArray(size: Int): Array<VideoItem?> = arrayOfNulls(size)
+    }
+}
 
 data class ImageItem(
     val id: Long,
@@ -36,7 +79,7 @@ data class ImageItem(
 data class MediaFolder(
     val name: String,
     val path: String,
-    val thumbnailUri: Uri?,
+    val thumbnailUri: String?,
     val mediaCount: Int,
     val totalSize: Long = 0
 )

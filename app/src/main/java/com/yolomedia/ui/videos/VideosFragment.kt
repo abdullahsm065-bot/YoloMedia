@@ -18,10 +18,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.yolomedia.R
+import com.yolomedia.data.model.MediaFolder
 import com.yolomedia.data.model.SortOrder
 import com.yolomedia.data.model.VideoItem
+import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.common.ModernDialog
 import com.yolomedia.ui.player.VideoPlayerActivity
+import com.yolomedia.ui.reels.ReelsActivity
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 import com.yolomedia.viewmodel.SafeViewModel
@@ -40,9 +43,11 @@ class VideosFragment : Fragment() {
     private lateinit var btnBack: ImageView
     private lateinit var btnSort: ImageView
 
-    private val folderAdapter = VideoFolderAdapter { folder ->
-        viewModel.loadVideosInFolder(folder.path, folder.name)
-    }
+    private val folderAdapter = VideoFolderAdapter(
+        onFolderClick = { folder -> viewModel.loadVideosInFolder(folder.path, folder.name) },
+        onReelClick = { folder -> openFolderAsReels(folder) },
+        onToggleReel = { folder -> showReelToggleDialog(folder) }
+    )
 
     private val videoAdapter = VideoAdapter(
         onVideoClick = { video -> openVideoPlayer(video) },
@@ -296,6 +301,43 @@ class VideosFragment : Fragment() {
             true
         }
         popup.show()
+    }
+
+    private fun openFolderAsReels(folder: MediaFolder) {
+        viewModel.loadVideosInFolder(folder.path, folder.name)
+        viewModel.videos.observe(viewLifecycleOwner) { videos ->
+            if (videos.isNotEmpty() && viewModel.currentFolder.value == folder.path) {
+                val intent = Intent(requireContext(), ReelsActivity::class.java).apply {
+                    putParcelableArrayListExtra("videos", ArrayList(videos))
+                    putExtra("folder_name", folder.name)
+                    putExtra("start_position", 0)
+                }
+                startActivity(intent)
+                viewModel.goBackToFolders()
+            }
+        }
+    }
+
+    private fun showReelToggleDialog(folder: MediaFolder) {
+        val prefs = AppPreferences(requireContext())
+        val isReel = prefs.isReelFolder(folder.path)
+        val title = if (isReel) "Remove from Reels" else "Tag as Reel"
+        val message = if (isReel)
+            "Remove \"${folder.name}\" from Reels? It will open normally."
+        else
+            "Tag \"${folder.name}\" as Reel? Tapping it will open in vertical swipe mode like Instagram Reels."
+
+        ModernDialog.confirm(
+            context = requireContext(),
+            title = title,
+            message = message,
+            positiveText = if (isReel) "Remove" else "Tag",
+            negativeText = "Cancel",
+            onPositive = {
+                prefs.toggleReelFolder(folder.path)
+                folderAdapter.notifyDataSetChanged()
+            }
+        )
     }
 
     fun refreshData() {

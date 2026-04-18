@@ -64,6 +64,11 @@ class SettingsFragment : Fragment() {
     private lateinit var switchAutoRotateVideo: SwitchCompat
     private lateinit var switchShowFileSize: SwitchCompat
     private lateinit var switchShowDuration: SwitchCompat
+    private lateinit var switchReelsAutoPlay: SwitchCompat
+    private lateinit var switchReelsLoop: SwitchCompat
+    private lateinit var settingClearReelTags: LinearLayout
+    private lateinit var switchCropThumbnails: SwitchCompat
+    private lateinit var switchRememberFolder: SwitchCompat
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -123,6 +128,11 @@ class SettingsFragment : Fragment() {
         switchAutoRotateVideo = view.findViewById(R.id.switch_auto_rotate_video)
         switchShowFileSize = view.findViewById(R.id.switch_show_file_size)
         switchShowDuration = view.findViewById(R.id.switch_show_duration)
+        switchReelsAutoPlay = view.findViewById(R.id.switch_reels_auto_play)
+        switchReelsLoop = view.findViewById(R.id.switch_reels_loop)
+        settingClearReelTags = view.findViewById(R.id.setting_clear_reel_tags)
+        switchCropThumbnails = view.findViewById(R.id.switch_crop_thumbnails)
+        switchRememberFolder = view.findViewById(R.id.switch_remember_folder)
     }
 
     private fun setupListeners() {
@@ -209,6 +219,36 @@ class SettingsFragment : Fragment() {
         switchShowDuration.setOnCheckedChangeListener { _, isChecked ->
             preferences.showDurationBadge = isChecked
         }
+
+        switchReelsAutoPlay.setOnCheckedChangeListener { _, isChecked ->
+            preferences.reelsAutoPlay = isChecked
+        }
+
+        switchReelsLoop.setOnCheckedChangeListener { _, isChecked ->
+            preferences.reelsLoop = isChecked
+        }
+
+        settingClearReelTags.setOnClickListener {
+            ModernDialog.confirm(
+                context = requireContext(),
+                title = "Clear Reel Tags",
+                message = "Remove reel designation from all folders? They will open normally again.",
+                positiveText = "Clear",
+                negativeText = "Cancel",
+                onPositive = {
+                    preferences.clearReelFolders()
+                    Toast.makeText(requireContext(), "All reel tags cleared", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        switchCropThumbnails.setOnCheckedChangeListener { _, isChecked ->
+            preferences.cropThumbnails = isChecked
+        }
+
+        switchRememberFolder.setOnCheckedChangeListener { _, isChecked ->
+            preferences.rememberLastFolder = isChecked
+        }
     }
 
     private fun loadPreferences() {
@@ -225,6 +265,10 @@ class SettingsFragment : Fragment() {
         switchAutoRotateVideo.isChecked = preferences.autoRotateVideo
         switchShowFileSize.isChecked = preferences.showFileSize
         switchShowDuration.isChecked = preferences.showDurationBadge
+        switchReelsAutoPlay.isChecked = preferences.reelsAutoPlay
+        switchReelsLoop.isChecked = preferences.reelsLoop
+        switchCropThumbnails.isChecked = preferences.cropThumbnails
+        switchRememberFolder.isChecked = preferences.rememberLastFolder
         updatePlaybackSpeedText()
         updateThumbnailQualityText()
         updateGridColumnsText()

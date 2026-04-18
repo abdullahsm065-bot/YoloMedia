@@ -78,7 +78,7 @@ class VideosViewModel(application: Application) : AndroidViewModel(application) 
     fun deleteVideo(video: VideoItem) {
         viewModelScope.launch {
             try {
-                val uri = video.uri
+                val uri = android.net.Uri.parse(video.uri)
                 getApplication<Application>().contentResolver.delete(uri, null, null)
                 _currentFolder.value?.let { folder ->
                     loadVideosInFolder(folder, _currentFolderName.value ?: "")

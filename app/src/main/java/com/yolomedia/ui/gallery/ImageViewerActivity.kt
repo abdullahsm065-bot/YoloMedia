@@ -86,6 +86,8 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private fun loadImage() {
+        ivImage.setToggleControlsListener { toggleControls() }
+
         imageUri?.let { uri ->
             Glide.with(this).load(Uri.parse(uri)).into(ivImage)
         }

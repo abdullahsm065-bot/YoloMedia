@@ -5,14 +5,17 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
@@ -32,6 +35,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.yolomedia.R
 import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.utils.FormatUtils
+import kotlin.math.abs
 
 class VideoPlayerActivity : AppCompatActivity() {
 
@@ -69,28 +73,41 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var controlsLocked = false
     private var isLooping = false
     private var currentSpeedIndex = 3
+    private var wasPlayingBeforeSeek = false
 
     private val speeds = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f)
     private val speedLabels = arrayOf("0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "3x")
     private val aspectModes = arrayOf("Fit", "Fill", "Crop", "16:9", "4:3")
     private var currentAspect = 0
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val hideControlsRunnable = Runnable { hideControls() }
     private val updateProgressRunnable = object : Runnable {
         override fun run() {
             updateProgress()
-            handler.postDelayed(this, 250)
+            mainHandler.postDelayed(this, 300)
         }
     }
 
     private var retriever: MediaMetadataRetriever? = null
+    private var scrubThread: HandlerThread? = null
+    private var scrubHandler: Handler? = null
+    private var lastScrubTime = 0L
+
     private lateinit var gestureDetector: GestureDetector
     private lateinit var scaleGestureDetector: ScaleGestureDetector
 
     private var videoScale = 1f
     private var audioManager: AudioManager? = null
     private var orientationSet = false
+
+    private var isVerticalSwipe = false
+    private var isSwipingBrightness = false
+    private var isSwipingVolume = false
+    private var swipeStartBrightness = -1f
+    private var swipeStartVolume = -1
+    private var swipeStartY = 0f
+    private var isLongPressing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,6 +116,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_video_player)
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        scrubThread = HandlerThread("FrameScrubber").also { it.start() }
+        scrubHandler = Handler(scrubThread!!.looper)
 
         bindViews()
 
@@ -120,7 +140,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
 
         markVideoAsPlayed()
-        detectVideoOrientation()
+        if (prefs.autoRotateVideo) detectVideoOrientation()
     }
 
     private fun markVideoAsPlayed() {
@@ -136,16 +156,13 @@ class VideoPlayerActivity : AppCompatActivity() {
             val h = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
             val rotation = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
             r.release()
-
-            val effectiveW = if (rotation == 90 || rotation == 270) h else w
-            val effectiveH = if (rotation == 90 || rotation == 270) w else h
-
-            if (effectiveW > 0 && effectiveH > 0) {
-                requestedOrientation = if (effectiveW > effectiveH) {
+            val ew = if (rotation == 90 || rotation == 270) h else w
+            val eh = if (rotation == 90 || rotation == 270) w else h
+            if (ew > 0 && eh > 0) {
+                requestedOrientation = if (ew > eh)
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } else {
+                else
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                }
                 orientationSet = true
             }
         } catch (_: Exception) {}
@@ -178,13 +195,9 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     private fun setupSurface() {
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                initializePlayer(holder)
-            }
+            override fun surfaceCreated(holder: SurfaceHolder) { initializePlayer(holder) }
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                releasePlayer()
-            }
+            override fun surfaceDestroyed(holder: SurfaceHolder) { releasePlayer() }
         })
     }
 
@@ -200,6 +213,15 @@ class VideoPlayerActivity : AppCompatActivity() {
                 surfaceView.scaleY = videoScale
                 return true
             }
+
+            override fun onScaleEnd(detector: ScaleGestureDetector) {
+                if (videoScale < 1f) {
+                    videoScale = 1f
+                    surfaceView.animate().scaleX(1f).scaleY(1f)
+                        .translationX(0f).translationY(0f)
+                        .setDuration(200).setInterpolator(DecelerateInterpolator()).start()
+                }
+            }
         })
 
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -210,7 +232,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     e.x < screenWidth / 3f -> {
                         mediaPlayer?.let { mp ->
                             mp.seekTo(maxOf(0, mp.currentPosition - seekDuration))
-                            showGestureInfo("-${seekDuration / 1000}s")
+                            showGestureInfo("−${seekDuration / 1000}s")
                         }
                     }
                     e.x > screenWidth * 2 / 3f -> {
@@ -224,7 +246,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                             videoScale = 1f
                             surfaceView.animate().scaleX(1f).scaleY(1f)
                                 .translationX(0f).translationY(0f)
-                                .setDuration(250).setInterpolator(DecelerateInterpolator()).start()
+                                .setDuration(200).setInterpolator(DecelerateInterpolator()).start()
                         } else {
                             togglePlayPause()
                         }
@@ -242,97 +264,44 @@ class VideoPlayerActivity : AppCompatActivity() {
                 if (controlsLocked || !prefs.videoGesturesEnabled) return
                 mediaPlayer?.let { mp ->
                     if (mp.isPlaying) {
+                        isLongPressing = true
                         mp.setPlaybackParams(mp.playbackParams.setSpeed(2f))
-                        showGestureInfo("2x Speed")
+                        showGestureInfo("2× Speed")
                     }
                 }
             }
-
-            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (controlsLocked || scaleGestureDetector.isInProgress || !prefs.videoGesturesEnabled) return false
-                if (e1 == null) return false
-
-                if (videoScale > 1.1f) {
-                    surfaceView.translationX -= distanceX
-                    surfaceView.translationY -= distanceY
-                    return true
-                }
-
-                val screenWidth = resources.displayMetrics.widthPixels
-                val screenHeight = resources.displayMetrics.heightPixels
-                val deltaY = e1.y - e2.y
-
-                if (e1.x < screenWidth / 3f) {
-                    adjustBrightness(deltaY / screenHeight)
-                    return true
-                } else if (e1.x > screenWidth * 2 / 3f) {
-                    adjustVolume(deltaY / screenHeight)
-                    return true
-                }
-                return false
-            }
         })
-    }
-
-    private fun adjustBrightness(change: Float) {
-        val lp = window.attributes
-        var brightness = lp.screenBrightness
-        if (brightness < 0) brightness = 0.5f
-        brightness = (brightness + change * 0.5f).coerceIn(0.01f, 1f)
-        lp.screenBrightness = brightness
-        window.attributes = lp
-        showGestureInfo("Brightness: ${(brightness * 100).toInt()}%")
-    }
-
-    private fun adjustVolume(change: Float) {
-        val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-        val curVol = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-        val newVol = (curVol + change * maxVol * 0.3f).toInt().coerceIn(0, maxVol)
-        audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
-        showGestureInfo("Volume: ${(newVol * 100) / maxVol}%")
-    }
-
-    private fun showGestureInfo(text: String) {
-        gestureInfoView.text = text
-        gestureInfoView.alpha = 1f
-        gestureInfoView.visibility = View.VISIBLE
-        gestureInfoView.scaleX = 0.8f
-        gestureInfoView.scaleY = 0.8f
-        gestureInfoView.animate().scaleX(1f).scaleY(1f).setDuration(150)
-            .setInterpolator(OvershootInterpolator(2f)).start()
-        handler.removeCallbacksAndMessages(gestureInfoView)
-        handler.postDelayed({
-            gestureInfoView.animate().alpha(0f).scaleX(0.9f).scaleY(0.9f)
-                .setDuration(200).withEndAction {
-                    gestureInfoView.visibility = View.GONE
-                }.start()
-        }, 800)
     }
 
     private fun setupListeners() {
         btnBack.setOnClickListener { finish() }
 
         controlsOverlay.setOnTouchListener { _, event ->
+            val prefs = AppPreferences(this)
             scaleGestureDetector.onTouchEvent(event)
             gestureDetector.onTouchEvent(event)
-            if (event.action == MotionEvent.ACTION_UP) {
-                mediaPlayer?.let { mp ->
-                    if (mp.isPlaying) {
-                        val currentSpeed = speeds[currentSpeedIndex]
-                        if (mp.playbackParams.speed != currentSpeed) {
-                            mp.setPlaybackParams(mp.playbackParams.setSpeed(currentSpeed))
+
+            if (prefs.videoGesturesEnabled && !controlsLocked && !scaleGestureDetector.isInProgress) {
+                handleSwipeGesture(event)
+            }
+
+            if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                if (isLongPressing) {
+                    isLongPressing = false
+                    mediaPlayer?.let { mp ->
+                        if (mp.isPlaying) {
+                            mp.setPlaybackParams(mp.playbackParams.setSpeed(speeds[currentSpeedIndex]))
                         }
                     }
+                    hideGestureInfo()
                 }
+                resetSwipeState()
             }
             true
         }
 
         btnPlayPause.setOnClickListener {
-            if (!controlsLocked) {
-                togglePlayPause()
-                resetHideTimer()
-            }
+            if (!controlsLocked) { togglePlayPause(); resetHideTimer() }
         }
 
         val prefs = AppPreferences(this)
@@ -342,7 +311,7 @@ class VideoPlayerActivity : AppCompatActivity() {
             if (!controlsLocked) {
                 mediaPlayer?.let { mp ->
                     mp.seekTo(maxOf(0, mp.currentPosition - seekMs))
-                    animateSeekButton(btnSeekBack)
+                    animateButton(it)
                     resetHideTimer()
                 }
             }
@@ -352,7 +321,7 @@ class VideoPlayerActivity : AppCompatActivity() {
             if (!controlsLocked) {
                 mediaPlayer?.let { mp ->
                     if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + seekMs))
-                    animateSeekButton(btnSeekForward)
+                    animateButton(it)
                     resetHideTimer()
                 }
             }
@@ -381,11 +350,10 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
 
         btnRotate.setOnClickListener {
-            requestedOrientation = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            requestedOrientation = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-            } else {
+            else
                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            }
         }
 
         btnLoop.setOnClickListener {
@@ -409,51 +377,133 @@ class VideoPlayerActivity : AppCompatActivity() {
                     mediaPlayer?.let { mp ->
                         val position = (progress.toLong() * mp.duration) / 1000
                         tvCurrentTime.text = FormatUtils.formatDuration(position)
-                        scrubFrame(position)
+                        mp.seekTo(position.toInt())
+                        scrubFrameAsync(position)
                     }
                 }
             }
 
             override fun onStartTrackingTouch(bar: SeekBar?) {
                 isSeeking = true
-                handler.removeCallbacks(hideControlsRunnable)
+                wasPlayingBeforeSeek = mediaPlayer?.isPlaying == true
+                mediaPlayer?.pause()
+                mainHandler.removeCallbacks(hideControlsRunnable)
             }
 
             override fun onStopTrackingTouch(bar: SeekBar?) {
                 isSeeking = false
-                bar?.let { b ->
-                    mediaPlayer?.let { mp ->
-                        val position = (b.progress.toLong() * mp.duration) / 1000
-                        mp.seekTo(position.toInt())
-                    }
-                }
                 previewFrame.visibility = View.GONE
+                if (wasPlayingBeforeSeek) {
+                    mediaPlayer?.start()
+                    mediaPlayer?.setPlaybackParams(mediaPlayer!!.playbackParams.setSpeed(speeds[currentSpeedIndex]))
+                }
+                updatePlayPauseIcon()
                 resetHideTimer()
             }
         })
     }
 
-    private fun animateSeekButton(view: View) {
-        view.animate().scaleX(0.8f).scaleY(0.8f).setDuration(100)
+    private fun handleSwipeGesture(event: MotionEvent) {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                swipeStartY = event.y
+                isVerticalSwipe = false
+                isSwipingBrightness = false
+                isSwipingVolume = false
+                val lp = window.attributes
+                swipeStartBrightness = if (lp.screenBrightness < 0) 0.5f else lp.screenBrightness
+                swipeStartVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (scaleGestureDetector.isInProgress || event.pointerCount > 1) return
+
+                val dy = swipeStartY - event.y
+                if (!isVerticalSwipe && abs(dy) > 30) {
+                    isVerticalSwipe = true
+                    isSwipingBrightness = event.x < screenWidth / 2f
+                    isSwipingVolume = event.x >= screenWidth / 2f
+                }
+
+                if (isVerticalSwipe) {
+                    val fraction = dy / (screenHeight * 0.6f)
+                    if (isSwipingBrightness) {
+                        val newBrightness = (swipeStartBrightness + fraction).coerceIn(0.01f, 1f)
+                        val lp = window.attributes
+                        lp.screenBrightness = newBrightness
+                        window.attributes = lp
+                        showGestureInfo("☀ ${(newBrightness * 100).toInt()}%")
+                    } else if (isSwipingVolume) {
+                        val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+                        val newVol = (swipeStartVolume + fraction * maxVol).toInt().coerceIn(0, maxVol)
+                        audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
+                        showGestureInfo("🔊 ${(newVol * 100) / maxVol}%")
+                    }
+                }
+
+                if (videoScale > 1.1f) {
+                    surfaceView.translationX += event.x - swipeStartY
+                    surfaceView.translationY += event.y - swipeStartY
+                }
+            }
+        }
+    }
+
+    private fun resetSwipeState() {
+        isVerticalSwipe = false
+        isSwipingBrightness = false
+        isSwipingVolume = false
+    }
+
+    private fun animateButton(view: View) {
+        view.animate().scaleX(0.8f).scaleY(0.8f).setDuration(80)
             .withEndAction {
-                view.animate().scaleX(1f).scaleY(1f).setDuration(150)
+                view.animate().scaleX(1f).scaleY(1f).setDuration(120)
                     .setInterpolator(OvershootInterpolator(3f)).start()
             }.start()
     }
 
-    private fun scrubFrame(positionMs: Long) {
-        try {
-            retriever?.let { r ->
-                val bitmap = r.getFrameAtTime(
-                    positionMs * 1000,
-                    MediaMetadataRetriever.OPTION_CLOSEST
-                )
-                bitmap?.let {
-                    previewFrame.setImageBitmap(it)
-                    previewFrame.visibility = View.VISIBLE
+    private fun scrubFrameAsync(positionMs: Long) {
+        val now = System.currentTimeMillis()
+        if (now - lastScrubTime < 50) return
+        lastScrubTime = now
+
+        scrubHandler?.post {
+            try {
+                retriever?.let { r ->
+                    val bitmap: Bitmap? = r.getFrameAtTime(
+                        positionMs * 1000,
+                        MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                    )
+                    bitmap?.let { bmp ->
+                        mainHandler.post {
+                            previewFrame.setImageBitmap(bmp)
+                            previewFrame.visibility = View.VISIBLE
+                        }
+                    }
                 }
-            }
-        } catch (_: Exception) {}
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun showGestureInfo(text: String) {
+        gestureInfoView.text = text
+        gestureInfoView.alpha = 1f
+        gestureInfoView.visibility = View.VISIBLE
+        gestureInfoView.scaleX = 0.85f
+        gestureInfoView.scaleY = 0.85f
+        gestureInfoView.animate().scaleX(1f).scaleY(1f).setDuration(120)
+            .setInterpolator(OvershootInterpolator(2f)).start()
+        mainHandler.removeCallbacksAndMessages("gesture_hide")
+        mainHandler.postDelayed({ hideGestureInfo() }, 900)
+    }
+
+    private fun hideGestureInfo() {
+        gestureInfoView.animate().alpha(0f).setDuration(180).withEndAction {
+            gestureInfoView.visibility = View.GONE
+        }.start()
     }
 
     private fun togglePlayPause() {
@@ -475,9 +525,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         try {
             retriever = MediaMetadataRetriever()
-            try {
-                retriever?.setDataSource(this, Uri.parse(uri))
-            } catch (_: Exception) {}
+            try { retriever?.setDataSource(this, Uri.parse(uri)) } catch (_: Exception) {}
 
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(this@VideoPlayerActivity, Uri.parse(uri))
@@ -488,15 +536,14 @@ class VideoPlayerActivity : AppCompatActivity() {
                     bufferingIndicator.visibility = View.GONE
                     tvDuration.text = FormatUtils.formatDuration(mp.duration.toLong())
 
-                    if (!orientationSet) {
+                    if (!orientationSet && AppPreferences(this@VideoPlayerActivity).autoRotateVideo) {
                         val vw = mp.videoWidth
                         val vh = mp.videoHeight
                         if (vw > 0 && vh > 0) {
-                            requestedOrientation = if (vw > vh) {
+                            requestedOrientation = if (vw > vh)
                                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                            } else {
+                            else
                                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                            }
                             orientationSet = true
                         }
                     }
@@ -509,7 +556,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     mp.isLooping = isLooping
                     btnSpeed.text = speedLabels[currentSpeedIndex]
                     updatePlayPauseIcon()
-                    handler.post(updateProgressRunnable)
+                    mainHandler.post(updateProgressRunnable)
                     resetHideTimer()
                     applyAspectRatio()
                 }
@@ -552,46 +599,29 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun applyAspectRatio() {
         mediaPlayer?.let { mp ->
             if (!isPrepared) return
-            val videoWidth = mp.videoWidth
-            val videoHeight = mp.videoHeight
-            if (videoWidth == 0 || videoHeight == 0) return
+            val vw = mp.videoWidth
+            val vh = mp.videoHeight
+            if (vw == 0 || vh == 0) return
 
-            val screenWidth = resources.displayMetrics.widthPixels.toFloat()
-            val screenHeight = resources.displayMetrics.heightPixels.toFloat()
+            val sw = resources.displayMetrics.widthPixels.toFloat()
+            val sh = resources.displayMetrics.heightPixels.toFloat()
             val params = surfaceView.layoutParams as FrameLayout.LayoutParams
 
             when (currentAspect) {
-                0 -> {
-                    val ratio = minOf(screenWidth / videoWidth, screenHeight / videoHeight)
-                    params.width = (videoWidth * ratio).toInt()
-                    params.height = (videoHeight * ratio).toInt()
-                }
-                1 -> {
-                    params.width = screenWidth.toInt()
-                    params.height = screenHeight.toInt()
-                }
-                2 -> {
-                    val ratio = maxOf(screenWidth / videoWidth, screenHeight / videoHeight)
-                    params.width = (videoWidth * ratio).toInt()
-                    params.height = (videoHeight * ratio).toInt()
-                }
-                3 -> {
-                    params.width = screenWidth.toInt()
-                    params.height = (screenWidth * 9 / 16).toInt()
-                }
-                4 -> {
-                    params.width = screenWidth.toInt()
-                    params.height = (screenWidth * 3 / 4).toInt()
-                }
+                0 -> { val r = minOf(sw / vw, sh / vh); params.width = (vw * r).toInt(); params.height = (vh * r).toInt() }
+                1 -> { params.width = sw.toInt(); params.height = sh.toInt() }
+                2 -> { val r = maxOf(sw / vw, sh / vh); params.width = (vw * r).toInt(); params.height = (vh * r).toInt() }
+                3 -> { params.width = sw.toInt(); params.height = (sw * 9 / 16).toInt() }
+                4 -> { params.width = sw.toInt(); params.height = (sw * 3 / 4).toInt() }
             }
-            params.gravity = android.view.Gravity.CENTER
+            params.gravity = Gravity.CENTER
             surfaceView.layoutParams = params
         }
     }
 
     private fun releasePlayer() {
-        handler.removeCallbacks(updateProgressRunnable)
-        handler.removeCallbacks(hideControlsRunnable)
+        mainHandler.removeCallbacks(updateProgressRunnable)
+        mainHandler.removeCallbacks(hideControlsRunnable)
         mediaPlayer?.let {
             if (isPrepared) {
                 playbackPosition = it.currentPosition
@@ -610,6 +640,13 @@ class VideoPlayerActivity : AppCompatActivity() {
         releasePlayer()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        scrubThread?.quitSafely()
+        scrubThread = null
+        scrubHandler = null
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         mediaPlayer?.let {
@@ -621,13 +658,14 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun updatePlayPauseIcon() {
-        val isPlaying = mediaPlayer?.isPlaying == true
-        ivPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
-        val scaleX = ObjectAnimator.ofFloat(ivPlayPause, "scaleX", 0.6f, 1f)
-        val scaleY = ObjectAnimator.ofFloat(ivPlayPause, "scaleY", 0.6f, 1f)
+        val playing = mediaPlayer?.isPlaying == true
+        ivPlayPause.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
         AnimatorSet().apply {
-            playTogether(scaleX, scaleY)
-            duration = 200
+            playTogether(
+                ObjectAnimator.ofFloat(ivPlayPause, "scaleX", 0.7f, 1f),
+                ObjectAnimator.ofFloat(ivPlayPause, "scaleY", 0.7f, 1f)
+            )
+            duration = 180
             interpolator = OvershootInterpolator(2f)
             start()
         }
@@ -637,8 +675,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         if (isSeeking) return
         mediaPlayer?.let { mp ->
             if (isPrepared && mp.duration > 0) {
-                val progress = ((mp.currentPosition.toLong() * 1000) / mp.duration).toInt()
-                seekBar.progress = progress
+                seekBar.progress = ((mp.currentPosition.toLong() * 1000) / mp.duration).toInt()
                 tvCurrentTime.text = FormatUtils.formatDuration(mp.currentPosition.toLong())
             }
         }
@@ -651,9 +688,9 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun showControls() {
         controlsVisible = true
         if (!controlsLocked) {
-            animateView(topControls, true)
-            animateView(centerControls, true)
-            animateView(bottomControls, true)
+            fadeView(topControls, true)
+            fadeView(centerControls, true)
+            fadeView(bottomControls, true)
         }
         btnLock.visibility = View.VISIBLE
         resetHideTimer()
@@ -661,16 +698,16 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     private fun hideControls() {
         controlsVisible = false
-        animateView(topControls, false)
-        animateView(centerControls, false)
-        animateView(bottomControls, false)
+        fadeView(topControls, false)
+        fadeView(centerControls, false)
+        fadeView(bottomControls, false)
         if (!controlsLocked) btnLock.visibility = View.GONE
     }
 
-    private fun animateView(view: View, show: Boolean) {
+    private fun fadeView(view: View, show: Boolean) {
         view.animate()
             .alpha(if (show) 1f else 0f)
-            .setDuration(200)
+            .setDuration(180)
             .setInterpolator(DecelerateInterpolator())
             .withStartAction { if (show) view.visibility = View.VISIBLE }
             .withEndAction { if (!show) view.visibility = View.GONE }
@@ -678,8 +715,8 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun resetHideTimer() {
-        handler.removeCallbacks(hideControlsRunnable)
-        handler.postDelayed(hideControlsRunnable, 4000)
+        mainHandler.removeCallbacks(hideControlsRunnable)
+        mainHandler.postDelayed(hideControlsRunnable, 4000)
     }
 
     @Suppress("DEPRECATION")
