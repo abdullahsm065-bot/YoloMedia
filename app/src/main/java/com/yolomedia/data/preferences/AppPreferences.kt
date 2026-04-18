@@ -17,7 +17,7 @@ class AppPreferences(context: Context) {
         set(value) = prefs.edit().putString("theme_mode", value.name).apply()
 
     var accentColor: Int
-        get() = prefs.getInt("accent_color", 0xFF3B82F6.toInt())
+        get() = prefs.getInt("accent_color", 0xFF2F80ED.toInt())
         set(value) = prefs.edit().putInt("accent_color", value).apply()
 
     var viewMode: ViewMode
@@ -193,5 +193,32 @@ class AppPreferences(context: Context) {
 
     fun clearSafeReelFolders() {
         prefs.edit().putStringSet("safe_reel_folders", emptySet()).apply()
+    }
+
+    var hapticFeedbackEnabled: Boolean
+        get() = prefs.getBoolean("haptic_feedback_enabled", true)
+        set(value) = prefs.edit().putBoolean("haptic_feedback_enabled", value).apply()
+
+    var soundEffectsEnabled: Boolean
+        get() = prefs.getBoolean("sound_effects_enabled", false)
+        set(value) = prefs.edit().putBoolean("sound_effects_enabled", value).apply()
+
+    fun addRecentlyViewed(uri: String) {
+        val recent = getRecentlyViewed().toMutableList()
+        recent.remove(uri)
+        recent.add(0, uri)
+        val trimmed = recent.take(50)
+        prefs.edit().putStringSet("recently_viewed", trimmed.toSet())
+            .putString("recently_viewed_order", trimmed.joinToString(","))
+            .apply()
+    }
+
+    fun getRecentlyViewed(): List<String> {
+        val order = prefs.getString("recently_viewed_order", "") ?: ""
+        return if (order.isNotEmpty()) order.split(",") else emptyList()
+    }
+
+    fun clearRecentlyViewed() {
+        prefs.edit().remove("recently_viewed").remove("recently_viewed_order").apply()
     }
 }

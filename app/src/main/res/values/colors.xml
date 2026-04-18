@@ -4,32 +4,32 @@
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
 
-    <!-- Light Theme -->
-    <color name="light_background">#FFF5F7FA</color>
-    <color name="light_surface">#FFFFFFFF</color>
+    <!-- Light Theme - iOS 26 Liquid Glass Inspired -->
+    <color name="light_background">#FFFFFFFF</color>
+    <color name="light_surface">#FFF8F9FC</color>
     <color name="light_card">#FFFFFFFF</color>
-    <color name="light_text_primary">#FF0F172A</color>
-    <color name="light_text_secondary">#FF64748B</color>
-    <color name="light_divider">#FFE2E8F0</color>
+    <color name="light_text_primary">#FF0A0A0A</color>
+    <color name="light_text_secondary">#FF6B7280</color>
+    <color name="light_divider">#FFE5E7EB</color>
     <color name="light_nav_bar">#E6FFFFFF</color>
-    <color name="light_status_bar">#FFF5F7FA</color>
-    <color name="light_icon_tint">#FF94A3B8</color>
+    <color name="light_status_bar">#FFFFFFFF</color>
+    <color name="light_icon_tint">#FF9CA3AF</color>
 
-    <!-- Dark Theme -->
-    <color name="dark_background">#FF0B1121</color>
-    <color name="dark_surface">#FF131D2F</color>
-    <color name="dark_card">#FF182338</color>
-    <color name="dark_text_primary">#FFEDF2F7</color>
+    <!-- Dark Theme - Deep Navy with Neon Blue -->
+    <color name="dark_background">#FF0A0F1F</color>
+    <color name="dark_surface">#FF111827</color>
+    <color name="dark_card">#FF1A2035</color>
+    <color name="dark_text_primary">#FFF0F2F5</color>
     <color name="dark_text_secondary">#FF8B9DC3</color>
-    <color name="dark_divider">#FF243049</color>
-    <color name="dark_nav_bar">#CC0F1729</color>
-    <color name="dark_status_bar">#FF0B1121</color>
+    <color name="dark_divider">#FF1F2937</color>
+    <color name="dark_nav_bar">#CC0A0F1F</color>
+    <color name="dark_status_bar">#FF0A0F1F</color>
     <color name="dark_icon_tint">#FF6B82A8</color>
 
     <!-- Accent Colors -->
-    <color name="accent_blue">#FF3B82F6</color>
+    <color name="accent_blue">#FF2F80ED</color>
     <color name="accent_blue_light">#FF60A5FA</color>
-    <color name="accent_blue_dark">#FF2563EB</color>
+    <color name="accent_blue_dark">#FF1E6FD9</color>
     <color name="accent_purple">#FF8B5CF6</color>
     <color name="accent_green">#FF22C55E</color>
     <color name="accent_orange">#FFF97316</color>
@@ -37,6 +37,8 @@
     <color name="accent_teal">#FF14B8A6</color>
     <color name="accent_pink">#FFEC4899</color>
     <color name="accent_indigo">#FF6366F1</color>
+    <color name="accent_cyan">#FF06B6D4</color>
+    <color name="accent_amber">#FFF59E0B</color>
 
     <!-- Utility Colors -->
     <color name="overlay">#80000000</color>
@@ -49,15 +51,22 @@
     <color name="success">#FF22C55E</color>
     <color name="warning">#FFFBBF24</color>
 
-    <!-- Glass Effect -->
+    <!-- Glass Effect - iOS 26 Liquid Glass -->
     <color name="glass_light">#D9FFFFFF</color>
     <color name="glass_dark">#B30F1729</color>
-    <color name="glass_border_light">#33FFFFFF</color>
-    <color name="glass_border_dark">#1AFFFFFF</color>
+    <color name="glass_border_light">#40FFFFFF</color>
+    <color name="glass_border_dark">#20FFFFFF</color>
+    <color name="glass_frosted_light">#E6F0F4F8</color>
+    <color name="glass_frosted_dark">#CC111827</color>
+    <color name="glass_highlight">#30FFFFFF</color>
 
     <!-- Player -->
     <color name="player_background">#FF000000</color>
     <color name="player_controls_bg">#99000000</color>
     <color name="player_seek_bar">#33FFFFFF</color>
     <color name="player_seek_buffered">#66FFFFFF</color>
+
+    <!-- Neon Glow (Dark mode accents) -->
+    <color name="neon_blue">#FF3B82F6</color>
+    <color name="neon_blue_glow">#402F80ED</color>
 </resources>
