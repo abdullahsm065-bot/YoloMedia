@@ -69,6 +69,9 @@ class SettingsFragment : Fragment() {
     private lateinit var settingClearReelTags: LinearLayout
     private lateinit var switchCropThumbnails: SwitchCompat
     private lateinit var switchRememberFolder: SwitchCompat
+    private lateinit var switchHapticFeedback: SwitchCompat
+    private lateinit var switchSoundEffects: SwitchCompat
+    private lateinit var settingClearRecent: LinearLayout
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -133,6 +136,9 @@ class SettingsFragment : Fragment() {
         settingClearReelTags = view.findViewById(R.id.setting_clear_reel_tags)
         switchCropThumbnails = view.findViewById(R.id.switch_crop_thumbnails)
         switchRememberFolder = view.findViewById(R.id.switch_remember_folder)
+        switchHapticFeedback = view.findViewById(R.id.switch_haptic_feedback)
+        switchSoundEffects = view.findViewById(R.id.switch_sound_effects)
+        settingClearRecent = view.findViewById(R.id.setting_clear_recent)
     }
 
     private fun setupListeners() {
@@ -249,6 +255,28 @@ class SettingsFragment : Fragment() {
         switchRememberFolder.setOnCheckedChangeListener { _, isChecked ->
             preferences.rememberLastFolder = isChecked
         }
+
+        switchHapticFeedback.setOnCheckedChangeListener { _, isChecked ->
+            preferences.hapticFeedbackEnabled = isChecked
+        }
+
+        switchSoundEffects.setOnCheckedChangeListener { _, isChecked ->
+            preferences.soundEffectsEnabled = isChecked
+        }
+
+        settingClearRecent.setOnClickListener {
+            ModernDialog.confirm(
+                context = requireContext(),
+                title = "Clear Recently Viewed",
+                message = "Remove all recently viewed history?",
+                positiveText = "Clear",
+                negativeText = "Cancel",
+                onPositive = {
+                    preferences.clearRecentlyViewed()
+                    Toast.makeText(requireContext(), "History cleared", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 
     private fun loadPreferences() {
@@ -269,6 +297,8 @@ class SettingsFragment : Fragment() {
         switchReelsLoop.isChecked = preferences.reelsLoop
         switchCropThumbnails.isChecked = preferences.cropThumbnails
         switchRememberFolder.isChecked = preferences.rememberLastFolder
+        switchHapticFeedback.isChecked = preferences.hapticFeedbackEnabled
+        switchSoundEffects.isChecked = preferences.soundEffectsEnabled
         updatePlaybackSpeedText()
         updateThumbnailQualityText()
         updateGridColumnsText()
@@ -363,9 +393,9 @@ class SettingsFragment : Fragment() {
 
     private fun showAccentColorDialog() {
         val colors = intArrayOf(
-            0xFF3B82F6.toInt(),
+            0xFF2F80ED.toInt(),
             0xFF8B5CF6.toInt(),
-            0xFF10B981.toInt(),
+            0xFF22C55E.toInt(),
             0xFFF59E0B.toInt(),
             0xFFEF4444.toInt(),
             0xFF14B8A6.toInt(),

@@ -2,7 +2,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF000000">
+    android:background="#FF000000"
+    android:clipChildren="false">
 
     <SurfaceView
         android:id="@+id/reel_surface"
@@ -17,6 +18,26 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:visibility="gone" />
+
+    <!-- Right side action buttons (Instagram style) -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:orientation="vertical"
+        android:paddingEnd="12dp"
+        android:paddingStart="12dp"
+        android:layout_marginBottom="80dp">
+
+        <ImageView
+            android:id="@+id/reel_btn_more"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="More options"
+            android:background="@drawable/bg_player_button" />
+    </LinearLayout>
 
     <!-- Bottom info overlay -->
     <LinearLayout
