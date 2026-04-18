@@ -8,6 +8,7 @@ import android.os.Build
 import android.view.View
 import android.view.WindowInsetsController
 import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
@@ -82,6 +83,26 @@ object ThemeManager {
         return AppPreferences(context).accentColor
     }
 
+    fun getAccentColorLight(context: Context): Int {
+        val accent = getAccentColor(context)
+        val r = Color.red(accent)
+        val g = Color.green(accent)
+        val b = Color.blue(accent)
+        return if (isDarkMode(context)) {
+            Color.argb(40, r, g, b)
+        } else {
+            Color.argb(25, r, g, b)
+        }
+    }
+
+    fun getAccentColorMedium(context: Context): Int {
+        val accent = getAccentColor(context)
+        val r = Color.red(accent)
+        val g = Color.green(accent)
+        val b = Color.blue(accent)
+        return Color.argb(100, r, g, b)
+    }
+
     fun getIconTintColor(context: Context): Int {
         return if (isDarkMode(context)) {
             ContextCompat.getColor(context, R.color.dark_icon_tint)
@@ -152,9 +173,30 @@ object ThemeManager {
         imageView.setColorFilter(getTextPrimaryColor(context))
     }
 
+    fun tintIconAccent(imageView: ImageView, context: Context) {
+        imageView.setColorFilter(getAccentColor(context))
+    }
+
+    fun applyAccentToSeekBar(seekBar: SeekBar, context: Context) {
+        val accentColor = getAccentColor(context)
+        seekBar.progressTintList = android.content.res.ColorStateList.valueOf(accentColor)
+        seekBar.thumbTintList = android.content.res.ColorStateList.valueOf(accentColor)
+    }
+
     fun createAccentDrawable(context: Context, cornerRadius: Float = 12f): GradientDrawable {
         return GradientDrawable().apply {
             setColor(getAccentColor(context))
+            this.cornerRadius = cornerRadius * context.resources.displayMetrics.density
+        }
+    }
+
+    fun createAccentOutlineDrawable(context: Context, cornerRadius: Float = 12f): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(Color.TRANSPARENT)
+            setStroke(
+                (1.5f * context.resources.displayMetrics.density).toInt(),
+                getAccentColor(context)
+            )
             this.cornerRadius = cornerRadius * context.resources.displayMetrics.density
         }
     }

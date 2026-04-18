@@ -19,6 +19,21 @@
             android:scaleType="centerCrop"
             android:contentDescription="Image" />
 
+        <CheckBox
+            android:id="@+id/cb_select"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/selection_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#30000000"
+            android:visibility="gone" />
+
     </androidx.cardview.widget.CardView>
 
 </FrameLayout>

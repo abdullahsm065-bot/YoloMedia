@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.CheckBox
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -13,6 +14,7 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.yolomedia.R
 import com.yolomedia.data.model.ImageItem
+import com.yolomedia.ui.theme.ThemeManager
 
 class ImageAdapter(
     private val onImageClick: (ImageItem, Int) -> Unit,
@@ -25,8 +27,42 @@ class ImageAdapter(
     private var animationsEnabled = true
     private var lastAnimatedPosition = -1
 
+    private val selectedItems = mutableSetOf<Long>()
+    var isSelectionMode = false
+        private set
+    var onSelectionChanged: ((Int) -> Unit)? = null
+
     fun setAnimationsEnabled(enabled: Boolean) {
         animationsEnabled = enabled
+    }
+
+    fun toggleSelection(id: Long) {
+        if (selectedItems.contains(id)) selectedItems.remove(id) else selectedItems.add(id)
+        if (selectedItems.isEmpty()) exitSelectionMode()
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedItems(): List<ImageItem> {
+        return currentList.filter { selectedItems.contains(it.id) }
+    }
+
+    fun selectAll() {
+        currentList.forEach { selectedItems.add(it.id) }
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedItems.clear()
+        onSelectionChanged?.invoke(0)
+        notifyDataSetChanged()
+    }
+
+    fun enterSelectionMode() {
+        isSelectionMode = true
+        notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -52,6 +88,8 @@ class ImageAdapter(
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivImage: ImageView = itemView.findViewById(R.id.iv_image)
+        private val cbSelect: CheckBox = itemView.findViewById(R.id.cb_select)
+        private val selectionOverlay: View = itemView.findViewById(R.id.selection_overlay)
 
         fun bind(image: ImageItem, position: Int) {
             val context = itemView.context
@@ -62,7 +100,35 @@ class ImageAdapter(
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivImage)
 
-            ivImage.setOnClickListener { onImageClick(image, position) }
+            if (isSelectionMode) {
+                cbSelect.visibility = View.VISIBLE
+                cbSelect.isChecked = selectedItems.contains(image.id)
+                selectionOverlay.visibility = if (selectedItems.contains(image.id)) View.VISIBLE else View.GONE
+
+                val accentColor = ThemeManager.getAccentColor(context)
+                cbSelect.buttonTintList = android.content.res.ColorStateList.valueOf(accentColor)
+            } else {
+                cbSelect.visibility = View.GONE
+                selectionOverlay.visibility = View.GONE
+            }
+
+            ivImage.setOnClickListener {
+                if (isSelectionMode) {
+                    toggleSelection(image.id)
+                } else {
+                    onImageClick(image, position)
+                }
+            }
+
+            ivImage.setOnLongClickListener {
+                if (!isSelectionMode) {
+                    enterSelectionMode()
+                    toggleSelection(image.id)
+                }
+                true
+            }
+
+            cbSelect.setOnClickListener { toggleSelection(image.id) }
         }
     }
 

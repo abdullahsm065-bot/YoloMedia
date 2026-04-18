@@ -176,4 +176,22 @@ class AppPreferences(context: Context) {
     fun isReelFolder(folderPath: String): Boolean {
         return folderPath in getReelFolders()
     }
+
+    fun getSafeReelFolders(): Set<String> {
+        return prefs.getStringSet("safe_reel_folders", emptySet()) ?: emptySet()
+    }
+
+    fun toggleSafeFolderReel(folderName: String) {
+        val folders = getSafeReelFolders().toMutableSet()
+        if (folders.contains(folderName)) folders.remove(folderName) else folders.add(folderName)
+        prefs.edit().putStringSet("safe_reel_folders", folders).apply()
+    }
+
+    fun isSafeFolderReel(folderName: String): Boolean {
+        return folderName in getSafeReelFolders()
+    }
+
+    fun clearSafeReelFolders() {
+        prefs.edit().putStringSet("safe_reel_folders", emptySet()).apply()
+    }
 }

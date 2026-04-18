@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -37,6 +38,13 @@ class GalleryFragment : Fragment() {
     private lateinit var tvTitle: TextView
     private lateinit var btnSort: ImageView
     private lateinit var preferences: AppPreferences
+    private lateinit var selectionBar: LinearLayout
+    private lateinit var tvSelectionCount: TextView
+    private lateinit var btnCloseSelection: ImageView
+    private lateinit var btnSelectAll: ImageView
+    private lateinit var btnShareSelected: ImageView
+    private lateinit var btnSafeSelected: ImageView
+    private lateinit var btnDeleteSelected: ImageView
 
     private val imageAdapter = ImageAdapter(
         onImageClick = { image, _ -> openImageViewer(image) },
@@ -62,11 +70,19 @@ class GalleryFragment : Fragment() {
         swipeRefresh = view.findViewById(R.id.swipe_refresh)
         tvTitle = view.findViewById(R.id.tv_title)
         btnSort = view.findViewById(R.id.btn_sort)
+        selectionBar = view.findViewById(R.id.selection_bar)
+        tvSelectionCount = view.findViewById(R.id.tv_selection_count)
+        btnCloseSelection = view.findViewById(R.id.btn_close_selection)
+        btnSelectAll = view.findViewById(R.id.btn_select_all)
+        btnShareSelected = view.findViewById(R.id.btn_share_selected)
+        btnSafeSelected = view.findViewById(R.id.btn_safe_selected)
+        btnDeleteSelected = view.findViewById(R.id.btn_delete_selected)
 
         recyclerView.layoutManager = GridLayoutManager(requireContext(), preferences.gridColumnCount)
         recyclerView.adapter = imageAdapter
 
         setupListeners()
+        setupSelectionBar()
         observeData()
         applyTheme()
 
@@ -246,6 +262,122 @@ class GalleryFragment : Fragment() {
             true
         }
         popup.show()
+    }
+
+    fun handleBackPress(): Boolean {
+        if (imageAdapter.isSelectionMode) {
+            imageAdapter.exitSelectionMode()
+            return true
+        }
+        return false
+    }
+
+    private fun setupSelectionBar() {
+        imageAdapter.onSelectionChanged = { count ->
+            if (count > 0) {
+                selectionBar.visibility = View.VISIBLE
+                selectionBar.setBackgroundColor(ThemeManager.getSurfaceColor(requireContext()))
+                tvSelectionCount.text = "$count selected"
+                tvSelectionCount.setTextColor(ThemeManager.getTextPrimaryColor(requireContext()))
+                ThemeManager.tintIcon(btnCloseSelection, requireContext())
+                ThemeManager.tintIconAccent(btnSelectAll, requireContext())
+                ThemeManager.tintIconAccent(btnShareSelected, requireContext())
+                ThemeManager.tintIconAccent(btnSafeSelected, requireContext())
+                btnDeleteSelected.setColorFilter(0xFFE53935.toInt())
+            } else {
+                selectionBar.visibility = View.GONE
+            }
+        }
+
+        btnCloseSelection.setOnClickListener { imageAdapter.exitSelectionMode() }
+        btnSelectAll.setOnClickListener { imageAdapter.selectAll() }
+
+        btnDeleteSelected.setOnClickListener {
+            val selected = imageAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            ModernDialog.confirm(
+                context = requireContext(),
+                title = getString(R.string.delete),
+                message = "Delete ${selected.size} selected photo(s)?",
+                positiveText = getString(R.string.yes),
+                negativeText = getString(R.string.no),
+                onPositive = {
+                    selected.forEach { viewModel.deleteImage(it) }
+                    imageAdapter.exitSelectionMode()
+                }
+            )
+        }
+
+        btnShareSelected.setOnClickListener {
+            val selected = imageAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "image/*"
+                val uris = ArrayList<android.net.Uri>()
+                selected.forEach { image ->
+                    val file = File(image.path)
+                    val uri = FileProvider.getUriForFile(
+                        requireContext(),
+                        "${requireContext().packageName}.fileprovider",
+                        file
+                    )
+                    uris.add(uri)
+                }
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.share)))
+        }
+
+        btnSafeSelected.setOnClickListener {
+            val selected = imageAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            val folderNames = safeViewModel.getSafeFolderNames()
+            if (folderNames.isEmpty()) {
+                ModernDialog.input(
+                    context = requireContext(),
+                    title = getString(R.string.create_folder),
+                    hint = getString(R.string.folder_name),
+                    onConfirm = { name ->
+                        if (name.isNotEmpty()) {
+                            safeViewModel.createFolder(name)
+                            selected.forEach { safeViewModel.moveImageToSafe(it, name) }
+                            imageAdapter.exitSelectionMode()
+                            viewModel.loadImages()
+                        }
+                    }
+                )
+            } else {
+                val options = folderNames.toMutableList()
+                options.add("+ Create New Folder")
+                ModernDialog.list(
+                    context = requireContext(),
+                    title = getString(R.string.select_folder),
+                    options = options.toTypedArray(),
+                    onSelect = { which ->
+                        if (which < folderNames.size) {
+                            selected.forEach { safeViewModel.moveImageToSafe(it, folderNames[which]) }
+                            imageAdapter.exitSelectionMode()
+                            viewModel.loadImages()
+                        } else {
+                            ModernDialog.input(
+                                context = requireContext(),
+                                title = getString(R.string.create_folder),
+                                hint = getString(R.string.folder_name),
+                                onConfirm = { name ->
+                                    if (name.isNotEmpty()) {
+                                        safeViewModel.createFolder(name)
+                                        selected.forEach { safeViewModel.moveImageToSafe(it, name) }
+                                        imageAdapter.exitSelectionMode()
+                                        viewModel.loadImages()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+        }
     }
 
     fun refreshData() {

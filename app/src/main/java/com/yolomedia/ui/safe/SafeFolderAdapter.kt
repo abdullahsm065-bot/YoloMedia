@@ -12,12 +12,15 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.yolomedia.R
 import com.yolomedia.data.model.SafeFolder
+import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.theme.ThemeManager
 
 class SafeFolderAdapter(
     private val onFolderClick: (SafeFolder) -> Unit,
     private val onDeleteClick: (SafeFolder) -> Unit,
-    private val onRenameClick: (SafeFolder) -> Unit
+    private val onRenameClick: (SafeFolder) -> Unit,
+    private val onToggleReel: ((SafeFolder) -> Unit)? = null,
+    private val onReelClick: ((SafeFolder) -> Unit)? = null
 ) : ListAdapter<SafeFolder, SafeFolderAdapter.ViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -38,24 +41,37 @@ class SafeFolderAdapter(
 
         fun bind(folder: SafeFolder) {
             val context = itemView.context
+            val prefs = AppPreferences(context)
+            val isReel = prefs.isSafeFolderReel(folder.name)
+
             tvFolderName.text = folder.name
-            tvFolderInfo.text = "${folder.videoCount} videos, ${folder.photoCount} photos"
+            val infoText = "${folder.videoCount} videos, ${folder.photoCount} photos"
+            tvFolderInfo.text = if (isReel) "$infoText \u2022 Reel" else infoText
 
             cardView.setCardBackgroundColor(ThemeManager.getCardColor(context))
             tvFolderName.setTextColor(ThemeManager.getTextPrimaryColor(context))
             tvFolderInfo.setTextColor(ThemeManager.getTextSecondaryColor(context))
             ThemeManager.tintIcon(btnMore, context)
 
-            itemView.setOnClickListener { onFolderClick(folder) }
+            itemView.setOnClickListener {
+                if (isReel && onReelClick != null) {
+                    onReelClick.invoke(folder)
+                } else {
+                    onFolderClick(folder)
+                }
+            }
 
             btnMore.setOnClickListener { view ->
                 val popup = PopupMenu(context, view)
                 popup.menu.add(0, 1, 0, context.getString(R.string.rename))
                 popup.menu.add(0, 2, 1, context.getString(R.string.delete))
+                val reelLabel = if (isReel) "Remove Reel Tag" else "Tag as Reel"
+                popup.menu.add(0, 3, 2, reelLabel)
                 popup.setOnMenuItemClickListener { item ->
                     when (item.itemId) {
                         1 -> onRenameClick(folder)
                         2 -> onDeleteClick(folder)
+                        3 -> onToggleReel?.invoke(folder)
                     }
                     true
                 }

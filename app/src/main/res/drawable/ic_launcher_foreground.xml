@@ -4,9 +4,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="22">
+    <group android:translateX="24" android:translateY="24">
+        <!-- Play triangle -->
+        <path
+            android:fillColor="#FF3B82F6"
+            android:pathData="M22,10L50,30L22,50Z" />
+        <!-- Film strip left -->
         <path
             android:fillColor="#FFFFFFFF"
-            android:pathData="M32,8L8,8C5.79,8 4,9.79 4,12L4,52C4,54.21 5.79,56 8,56L56,56C58.21,56 60,54.21 60,52L60,12C60,9.79 58.21,8 56,8L32,8ZM24,48L24,16L48,32L24,48Z" />
+            android:pathData="M8,6C8,4.9 8.9,4 10,4L14,4C15.1,4 16,4.9 16,6L16,54C16,55.1 15.1,56 14,56L10,56C8.9,56 8,55.1 8,54Z"
+            android:fillAlpha="0.3" />
+        <!-- Film perforations -->
+        <path
+            android:fillColor="#FF3B82F6"
+            android:pathData="M10,10h4v4h-4zM10,20h4v4h-4zM10,30h4v4h-4zM10,40h4v4h-4z"
+            android:fillAlpha="0.5" />
+        <!-- Glow circle behind play -->
+        <path
+            android:fillColor="#FF60A5FA"
+            android:pathData="M36,30m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0"
+            android:fillAlpha="0.15" />
     </group>
 </vector>

@@ -34,6 +34,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.yolomedia.R
 import com.yolomedia.data.preferences.AppPreferences
+import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.utils.FormatUtils
 import kotlin.math.abs
 
@@ -60,6 +61,10 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var btnRotate: ImageView
     private lateinit var btnLoop: ImageView
     private lateinit var btnAspect: ImageView
+    private lateinit var btnFullscreen: ImageView
+    private lateinit var btnBottomPlay: ImageView
+    private lateinit var btnPrev: ImageView
+    private lateinit var btnNext: ImageView
     private lateinit var gestureInfoView: TextView
     private lateinit var previewFrame: ImageView
 
@@ -76,7 +81,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var wasPlayingBeforeSeek = false
 
     private val speeds = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f)
-    private val speedLabels = arrayOf("0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "3x")
+    private val speedLabels = arrayOf("0.25X", "0.5X", "0.75X", "1X", "1.25X", "1.5X", "2X", "3X")
     private val aspectModes = arrayOf("Fit", "Fill", "Crop", "16:9", "4:3")
     private var currentAspect = 0
 
@@ -130,6 +135,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         currentSpeedIndex = speeds.indexOfFirst { it == prefs.defaultPlaybackSpeed }.coerceAtLeast(3)
         isLooping = prefs.loopVideos
 
+        applyAccentToControls()
         setupGestures()
         setupListeners()
         setupSurface()
@@ -141,6 +147,12 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         markVideoAsPlayed()
         if (prefs.autoRotateVideo) detectVideoOrientation()
+    }
+
+    private fun applyAccentToControls() {
+        val accentColor = ThemeManager.getAccentColor(this)
+        seekBar.progressTintList = android.content.res.ColorStateList.valueOf(accentColor)
+        seekBar.thumbTintList = android.content.res.ColorStateList.valueOf(accentColor)
     }
 
     private fun markVideoAsPlayed() {
@@ -189,6 +201,10 @@ class VideoPlayerActivity : AppCompatActivity() {
         btnRotate = findViewById(R.id.btn_rotate)
         btnLoop = findViewById(R.id.btn_loop)
         btnAspect = findViewById(R.id.btn_aspect)
+        btnFullscreen = findViewById(R.id.btn_fullscreen)
+        btnBottomPlay = findViewById(R.id.btn_bottom_play)
+        btnPrev = findViewById(R.id.btn_prev)
+        btnNext = findViewById(R.id.btn_next)
         gestureInfoView = findViewById(R.id.gesture_info)
         previewFrame = findViewById(R.id.preview_frame)
     }
@@ -232,7 +248,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     e.x < screenWidth / 3f -> {
                         mediaPlayer?.let { mp ->
                             mp.seekTo(maxOf(0, mp.currentPosition - seekDuration))
-                            showGestureInfo("−${seekDuration / 1000}s")
+                            showGestureInfo("-${seekDuration / 1000}s")
                         }
                     }
                     e.x > screenWidth * 2 / 3f -> {
@@ -266,9 +282,18 @@ class VideoPlayerActivity : AppCompatActivity() {
                     if (mp.isPlaying) {
                         isLongPressing = true
                         mp.setPlaybackParams(mp.playbackParams.setSpeed(2f))
-                        showGestureInfo("2× Speed")
+                        showGestureInfo("2X Speed")
                     }
                 }
+            }
+
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+                if (videoScale > 1.1f && !scaleGestureDetector.isInProgress) {
+                    surfaceView.translationX -= distanceX
+                    surfaceView.translationY -= distanceY
+                    return true
+                }
+                return false
             }
         })
     }
@@ -304,6 +329,10 @@ class VideoPlayerActivity : AppCompatActivity() {
             if (!controlsLocked) { togglePlayPause(); resetHideTimer() }
         }
 
+        btnBottomPlay.setOnClickListener {
+            if (!controlsLocked) { togglePlayPause(); resetHideTimer() }
+        }
+
         val prefs = AppPreferences(this)
         val seekMs = prefs.doubleTapSeekDuration * 1000
 
@@ -322,6 +351,24 @@ class VideoPlayerActivity : AppCompatActivity() {
                 mediaPlayer?.let { mp ->
                     if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + seekMs))
                     animateButton(it)
+                    resetHideTimer()
+                }
+            }
+        }
+
+        btnPrev.setOnClickListener {
+            if (!controlsLocked) {
+                mediaPlayer?.let { mp ->
+                    mp.seekTo(maxOf(0, mp.currentPosition - seekMs))
+                    resetHideTimer()
+                }
+            }
+        }
+
+        btnNext.setOnClickListener {
+            if (!controlsLocked) {
+                mediaPlayer?.let { mp ->
+                    if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + seekMs))
                     resetHideTimer()
                 }
             }
@@ -360,8 +407,16 @@ class VideoPlayerActivity : AppCompatActivity() {
             isLooping = !isLooping
             mediaPlayer?.isLooping = isLooping
             btnLoop.alpha = if (isLooping) 1f else 0.5f
+            btnLoop.setBackgroundResource(
+                if (isLooping) R.drawable.bg_feature_button_active else R.drawable.bg_feature_button
+            )
             Toast.makeText(this, if (isLooping) "Loop ON" else "Loop OFF", Toast.LENGTH_SHORT).show()
         }
+
+        btnLoop.alpha = if (isLooping) 1f else 0.5f
+        btnLoop.setBackgroundResource(
+            if (isLooping) R.drawable.bg_feature_button_active else R.drawable.bg_feature_button
+        )
 
         btnAspect.setOnClickListener {
             currentAspect = (currentAspect + 1) % aspectModes.size
@@ -369,7 +424,10 @@ class VideoPlayerActivity : AppCompatActivity() {
             Toast.makeText(this, "Aspect: ${aspectModes[currentAspect]}", Toast.LENGTH_SHORT).show()
         }
 
-        btnLoop.alpha = if (isLooping) 1f else 0.5f
+        btnFullscreen.setOnClickListener {
+            currentAspect = if (currentAspect == 0) 1 else 0
+            applyAspectRatio()
+        }
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -434,18 +492,13 @@ class VideoPlayerActivity : AppCompatActivity() {
                         val lp = window.attributes
                         lp.screenBrightness = newBrightness
                         window.attributes = lp
-                        showGestureInfo("☀ ${(newBrightness * 100).toInt()}%")
+                        showGestureInfo("Brightness ${(newBrightness * 100).toInt()}%")
                     } else if (isSwipingVolume) {
                         val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
                         val newVol = (swipeStartVolume + fraction * maxVol).toInt().coerceIn(0, maxVol)
                         audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
-                        showGestureInfo("🔊 ${(newVol * 100) / maxVol}%")
+                        showGestureInfo("Volume ${(newVol * 100) / maxVol}%")
                     }
-                }
-
-                if (videoScale > 1.1f) {
-                    surfaceView.translationX += event.x - swipeStartY
-                    surfaceView.translationY += event.y - swipeStartY
                 }
             }
         }
@@ -660,6 +713,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun updatePlayPauseIcon() {
         val playing = mediaPlayer?.isPlaying == true
         ivPlayPause.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        btnBottomPlay.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
         AnimatorSet().apply {
             playTogether(
                 ObjectAnimator.ofFloat(ivPlayPause, "scaleX", 0.7f, 1f),

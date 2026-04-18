@@ -24,8 +24,11 @@ import com.yolomedia.R
 import com.yolomedia.data.model.SafeFolder
 import com.yolomedia.data.repository.SafeMediaItem
 import com.yolomedia.ui.common.ModernDialog
+import com.yolomedia.data.model.VideoItem
+import com.yolomedia.data.preferences.AppPreferences
 import com.yolomedia.ui.gallery.ImageViewerActivity
 import com.yolomedia.ui.player.VideoPlayerActivity
+import com.yolomedia.ui.reels.ReelsActivity
 import com.yolomedia.ui.theme.ThemeManager
 import com.yolomedia.viewmodel.SafeViewModel
 
@@ -60,7 +63,9 @@ class SafeFragment : Fragment() {
     private val folderAdapter = SafeFolderAdapter(
         onFolderClick = { folder -> viewModel.openFolder(folder) },
         onDeleteClick = { folder -> showDeleteFolderDialog(folder) },
-        onRenameClick = { folder -> showRenameFolderDialog(folder) }
+        onRenameClick = { folder -> showRenameFolderDialog(folder) },
+        onToggleReel = { folder -> toggleSafeFolderReel(folder) },
+        onReelClick = { folder -> openSafeReelFolder(folder) }
     )
 
     private val mediaAdapter = SafeMediaAdapter(
@@ -506,6 +511,24 @@ class SafeFragment : Fragment() {
                 viewModel.currentFolder.value?.let { viewModel.openFolder(it) }
             }
         )
+    }
+
+    private fun toggleSafeFolderReel(folder: SafeFolder) {
+        val prefs = AppPreferences(requireContext())
+        prefs.toggleSafeFolderReel(folder.name)
+        val isReel = prefs.isSafeFolderReel(folder.name)
+        Toast.makeText(
+            requireContext(),
+            if (isReel) "\"${folder.name}\" tagged as Reel" else "Reel tag removed from \"${folder.name}\"",
+            Toast.LENGTH_SHORT
+        ).show()
+        folderAdapter.notifyDataSetChanged()
+    }
+
+    private fun openSafeReelFolder(folder: SafeFolder) {
+        viewModel.openFolder(folder)
+        showingVideos = true
+        updateTabs()
     }
 
     fun handleBackPress(): Boolean {

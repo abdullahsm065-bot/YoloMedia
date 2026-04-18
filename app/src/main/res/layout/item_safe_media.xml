@@ -48,6 +48,12 @@
                 android:textColor="@color/light_text_secondary" />
         </LinearLayout>
 
+        <CheckBox
+            android:id="@+id/cb_select"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:visibility="gone" />
+
         <ImageView
             android:id="@+id/btn_restore"
             android:layout_width="32dp"

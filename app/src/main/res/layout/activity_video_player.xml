@@ -51,50 +51,167 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Top Bar -->
+        <!-- Top Bar with title -->
         <LinearLayout
             android:id="@+id/top_controls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="32dp"
+            android:orientation="vertical"
             android:background="@drawable/bg_player_top_gradient">
 
-            <ImageView
-                android:id="@+id/btn_back"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:padding="10dp"
-                android:src="@drawable/ic_back"
-                android:contentDescription="Back" />
-
-            <TextView
-                android:id="@+id/tv_video_title"
-                android:layout_width="0dp"
+            <!-- Title Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="8dp"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingTop="6dp">
 
-            <ImageView
-                android:id="@+id/btn_lock"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="9dp"
-                android:src="@drawable/ic_lock"
-                android:alpha="0.8"
-                android:contentDescription="Lock" />
+                <ImageView
+                    android:id="@+id/btn_back"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_back"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:id="@+id/tv_video_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="4dp"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <ImageView
+                    android:id="@+id/btn_audio_track"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_audio_track"
+                    android:contentDescription="Audio track" />
+
+                <ImageView
+                    android:id="@+id/btn_subtitle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_subtitle"
+                    android:contentDescription="Subtitles" />
+
+                <TextView
+                    android:id="@+id/btn_hw_decoder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HW"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="6dp" />
+
+                <ImageView
+                    android:id="@+id/btn_more"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="More" />
+            </LinearLayout>
+
+            <!-- Feature Buttons Row (scrollable) -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingHorizontal="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="12dp">
+
+                <LinearLayout
+                    android:id="@+id/feature_buttons_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <!-- Speed button -->
+                    <TextView
+                        android:id="@+id/btn_speed"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1X"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="6dp" />
+
+                    <!-- Screenshot -->
+                    <ImageView
+                        android:id="@+id/btn_screenshot"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_screenshot"
+                        android:background="@drawable/bg_feature_button"
+                        android:contentDescription="Screenshot" />
+
+                    <!-- Audio boost -->
+                    <ImageView
+                        android:id="@+id/btn_audio_boost"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_headphones"
+                        android:background="@drawable/bg_feature_button"
+                        android:contentDescription="Audio boost" />
+
+                    <!-- Rotation lock -->
+                    <ImageView
+                        android:id="@+id/btn_rotate"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_screen_rotation"
+                        android:background="@drawable/bg_feature_button"
+                        android:contentDescription="Rotate" />
+
+                    <!-- Loop -->
+                    <ImageView
+                        android:id="@+id/btn_loop"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_loop"
+                        android:background="@drawable/bg_feature_button_active"
+                        android:alpha="0.5"
+                        android:contentDescription="Loop" />
+
+                    <!-- More features arrow -->
+                    <ImageView
+                        android:id="@+id/btn_more_features"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="8dp"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_chevron_right"
+                        android:background="@drawable/bg_feature_button"
+                        android:contentDescription="More features" />
+                </LinearLayout>
+            </HorizontalScrollView>
         </LinearLayout>
 
-        <!-- Center Controls -->
+        <!-- Center Controls (prev, play/pause, next) -->
         <LinearLayout
             android:id="@+id/center_controls"
             android:layout_width="wrap_content"
@@ -154,49 +271,25 @@
             android:layout_gravity="bottom"
             android:orientation="vertical"
             android:background="@drawable/bg_player_controls"
-            android:paddingHorizontal="12dp"
-            android:paddingBottom="12dp">
+            android:paddingHorizontal="4dp"
+            android:paddingBottom="4dp">
 
-            <!-- Seek Bar -->
-            <SeekBar
-                android:id="@+id/seek_bar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="1000"
-                android:paddingVertical="10dp"
-                android:progressDrawable="@drawable/bg_seek_progress"
-                android:thumb="@drawable/bg_seek_thumb" />
-
-            <!-- Time + Action Buttons Row -->
+            <!-- Time Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="-4dp">
+                android:paddingHorizontal="12dp">
 
                 <TextView
                     android:id="@+id/tv_current_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0:00"
+                    android:text="00:00"
                     android:textColor="#CCFFFFFF"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=" / "
-                    android:textColor="#66FFFFFF"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/tv_duration"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0:00"
-                    android:textColor="#CCFFFFFF"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif-medium" />
 
                 <View
                     android:layout_width="0dp"
@@ -204,43 +297,96 @@
                     android:layout_weight="1" />
 
                 <TextView
-                    android:id="@+id/btn_speed"
+                    android:id="@+id/tv_duration"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1x"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="5dp" />
+                    android:text="00:00"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+
+            <!-- Seek Bar -->
+            <SeekBar
+                android:id="@+id/seek_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000"
+                android:paddingVertical="6dp"
+                android:paddingHorizontal="8dp"
+                android:progressDrawable="@drawable/bg_seek_progress"
+                android:thumb="@drawable/bg_seek_thumb" />
+
+            <!-- Bottom Action Buttons Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="4dp">
+
+                <!-- Lock button (left) -->
+                <ImageView
+                    android:id="@+id/btn_lock"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_lock"
+                    android:alpha="0.8"
+                    android:contentDescription="Lock" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <!-- Center: Prev, Play, Next -->
+                <ImageView
+                    android:id="@+id/btn_prev"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_skip_prev"
+                    android:contentDescription="Previous" />
 
                 <ImageView
-                    android:id="@+id/btn_loop"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:padding="7dp"
-                    android:layout_marginStart="4dp"
-                    android:src="@drawable/ic_restore"
-                    android:alpha="0.5"
-                    android:contentDescription="Loop" />
+                    android:id="@+id/btn_bottom_play"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="8dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:src="@drawable/ic_play"
+                    android:contentDescription="Play" />
 
+                <ImageView
+                    android:id="@+id/btn_next"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:contentDescription="Next" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <!-- Right: Aspect + Fullscreen -->
                 <ImageView
                     android:id="@+id/btn_aspect"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:padding="7dp"
-                    android:layout_marginStart="4dp"
-                    android:src="@drawable/ic_fullscreen"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_aspect_ratio"
                     android:contentDescription="Aspect" />
 
                 <ImageView
-                    android:id="@+id/btn_rotate"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:padding="7dp"
-                    android:layout_marginStart="4dp"
-                    android:src="@drawable/ic_fullscreen"
-                    android:contentDescription="Rotate" />
+                    android:id="@+id/btn_fullscreen"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_crop_fit"
+                    android:contentDescription="Fit screen" />
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>

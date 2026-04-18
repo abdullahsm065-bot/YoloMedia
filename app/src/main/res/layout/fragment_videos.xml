@@ -121,4 +121,70 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Selection Action Bar -->
+    <LinearLayout
+        android:id="@+id/selection_bar"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:background="@color/light_surface"
+        android:elevation="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/btn_close_selection"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_back"
+            android:contentDescription="Close" />
+
+        <TextView
+            android:id="@+id/tv_selection_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:text="0 selected" />
+
+        <ImageView
+            android:id="@+id/btn_select_all"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_check"
+            android:contentDescription="Select all" />
+
+        <ImageView
+            android:id="@+id/btn_share_selected"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_share"
+            android:contentDescription="Share" />
+
+        <ImageView
+            android:id="@+id/btn_safe_selected"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_safe"
+            android:contentDescription="Move to safe" />
+
+        <ImageView
+            android:id="@+id/btn_delete_selected"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_delete"
+            android:contentDescription="Delete" />
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

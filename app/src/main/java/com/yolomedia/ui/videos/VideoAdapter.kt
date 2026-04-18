@@ -3,6 +3,7 @@ package com.yolomedia.ui.videos
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -27,6 +28,40 @@ class VideoAdapter(
     private val onShareClick: (VideoItem) -> Unit
 ) : ListAdapter<VideoItem, VideoAdapter.ViewHolder>(DiffCallback()) {
 
+    private val selectedItems = mutableSetOf<Long>()
+    var isSelectionMode = false
+        private set
+    var onSelectionChanged: ((Int) -> Unit)? = null
+
+    fun toggleSelection(id: Long) {
+        if (selectedItems.contains(id)) selectedItems.remove(id) else selectedItems.add(id)
+        if (selectedItems.isEmpty()) exitSelectionMode()
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedItems(): List<VideoItem> {
+        return currentList.filter { selectedItems.contains(it.id) }
+    }
+
+    fun selectAll() {
+        currentList.forEach { selectedItems.add(it.id) }
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedItems.clear()
+        onSelectionChanged?.invoke(0)
+        notifyDataSetChanged()
+    }
+
+    fun enterSelectionMode() {
+        isSelectionMode = true
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_video, parent, false)
@@ -45,6 +80,7 @@ class VideoAdapter(
         private val tvDuration: TextView = itemView.findViewById(R.id.tv_duration)
         private val btnMore: ImageView = itemView.findViewById(R.id.btn_more)
         private val tvNewBadge: TextView = itemView.findViewById(R.id.tv_new_badge)
+        private val cbSelect: CheckBox = itemView.findViewById(R.id.cb_select)
 
         fun bind(video: VideoItem) {
             val context = itemView.context
@@ -77,11 +113,43 @@ class VideoAdapter(
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivThumbnail)
 
-            itemView.setOnClickListener { onVideoClick(video) }
+            if (isSelectionMode) {
+                cbSelect.visibility = View.VISIBLE
+                cbSelect.isChecked = selectedItems.contains(video.id)
+                btnMore.visibility = View.GONE
 
-            btnMore.setOnClickListener { view ->
-                showPopupMenu(view, video)
+                val accentColor = ThemeManager.getAccentColor(context)
+                cbSelect.buttonTintList = android.content.res.ColorStateList.valueOf(accentColor)
+
+                if (selectedItems.contains(video.id)) {
+                    cardView.setCardBackgroundColor(
+                        ThemeManager.getAccentColor(context) and 0x00FFFFFF or 0x20000000
+                    )
+                }
+            } else {
+                cbSelect.visibility = View.GONE
+                btnMore.visibility = View.VISIBLE
             }
+
+            itemView.setOnClickListener {
+                if (isSelectionMode) {
+                    toggleSelection(video.id)
+                } else {
+                    onVideoClick(video)
+                }
+            }
+
+            itemView.setOnLongClickListener {
+                if (!isSelectionMode) {
+                    enterSelectionMode()
+                    toggleSelection(video.id)
+                }
+                true
+            }
+
+            cbSelect.setOnClickListener { toggleSelection(video.id) }
+
+            btnMore.setOnClickListener { view -> showPopupMenu(view, video) }
         }
 
         private fun showPopupMenu(anchor: View, video: VideoItem) {

@@ -3,6 +3,7 @@ package com.yolomedia.ui.safe
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.cardview.widget.CardView
@@ -24,6 +25,40 @@ class SafeMediaAdapter(
 ) : ListAdapter<SafeMediaItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
     var isGridMode = false
+
+    private val selectedItems = mutableSetOf<String>()
+    var isSelectionMode = false
+        private set
+    var onSelectionChanged: ((Int) -> Unit)? = null
+
+    fun toggleSelection(path: String) {
+        if (selectedItems.contains(path)) selectedItems.remove(path) else selectedItems.add(path)
+        if (selectedItems.isEmpty()) exitSelectionMode()
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun getSelectedItems(): List<SafeMediaItem> {
+        return currentList.filter { selectedItems.contains(it.path) }
+    }
+
+    fun selectAll() {
+        currentList.forEach { selectedItems.add(it.path) }
+        onSelectionChanged?.invoke(selectedItems.size)
+        notifyDataSetChanged()
+    }
+
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedItems.clear()
+        onSelectionChanged?.invoke(0)
+        notifyDataSetChanged()
+    }
+
+    fun enterSelectionMode() {
+        isSelectionMode = true
+        notifyDataSetChanged()
+    }
 
     override fun getItemViewType(position: Int): Int {
         return if (isGridMode) VIEW_TYPE_GRID else VIEW_TYPE_ROW
@@ -56,6 +91,7 @@ class SafeMediaAdapter(
         private val tvInfo: TextView = itemView.findViewById(R.id.tv_info)
         private val btnRestore: ImageView = itemView.findViewById(R.id.btn_restore)
         private val btnDelete: ImageView = itemView.findViewById(R.id.btn_delete)
+        private val cbSelect: CheckBox = itemView.findViewById(R.id.cb_select)
 
         fun bind(item: SafeMediaItem) {
             val context = itemView.context
@@ -79,7 +115,34 @@ class SafeMediaAdapter(
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivThumbnail)
 
-            itemView.setOnClickListener { onItemClick(item) }
+            if (isSelectionMode) {
+                cbSelect.visibility = View.VISIBLE
+                cbSelect.isChecked = selectedItems.contains(item.path)
+                btnRestore.visibility = View.GONE
+                btnDelete.visibility = View.GONE
+
+                val accentColor = ThemeManager.getAccentColor(context)
+                cbSelect.buttonTintList = android.content.res.ColorStateList.valueOf(accentColor)
+
+                if (selectedItems.contains(item.path)) {
+                    cardView.setCardBackgroundColor(
+                        ThemeManager.getAccentColor(context) and 0x00FFFFFF or 0x20000000
+                    )
+                }
+            } else {
+                cbSelect.visibility = View.GONE
+                btnRestore.visibility = View.VISIBLE
+                btnDelete.visibility = View.VISIBLE
+            }
+
+            itemView.setOnClickListener {
+                if (isSelectionMode) toggleSelection(item.path) else onItemClick(item)
+            }
+            itemView.setOnLongClickListener {
+                if (!isSelectionMode) { enterSelectionMode(); toggleSelection(item.path) }
+                true
+            }
+            cbSelect.setOnClickListener { toggleSelection(item.path) }
             btnRestore.setOnClickListener { onRestoreClick(item) }
             btnDelete.setOnClickListener { onDeleteClick(item) }
         }
@@ -89,6 +152,8 @@ class SafeMediaAdapter(
         private val ivThumbnail: ImageView = itemView.findViewById(R.id.iv_thumbnail)
         private val btnRestore: ImageView = itemView.findViewById(R.id.btn_restore)
         private val btnDelete: ImageView = itemView.findViewById(R.id.btn_delete)
+        private val cbSelect: CheckBox = itemView.findViewById(R.id.cb_select)
+        private val selectionOverlay: View = itemView.findViewById(R.id.selection_overlay)
 
         fun bind(item: SafeMediaItem) {
             val context = itemView.context
@@ -99,7 +164,30 @@ class SafeMediaAdapter(
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivThumbnail)
 
-            itemView.setOnClickListener { onItemClick(item) }
+            if (isSelectionMode) {
+                cbSelect.visibility = View.VISIBLE
+                cbSelect.isChecked = selectedItems.contains(item.path)
+                selectionOverlay.visibility = if (selectedItems.contains(item.path)) View.VISIBLE else View.GONE
+                btnRestore.visibility = View.GONE
+                btnDelete.visibility = View.GONE
+
+                val accentColor = ThemeManager.getAccentColor(context)
+                cbSelect.buttonTintList = android.content.res.ColorStateList.valueOf(accentColor)
+            } else {
+                cbSelect.visibility = View.GONE
+                selectionOverlay.visibility = View.GONE
+                btnRestore.visibility = View.VISIBLE
+                btnDelete.visibility = View.VISIBLE
+            }
+
+            itemView.setOnClickListener {
+                if (isSelectionMode) toggleSelection(item.path) else onItemClick(item)
+            }
+            itemView.setOnLongClickListener {
+                if (!isSelectionMode) { enterSelectionMode(); toggleSelection(item.path) }
+                true
+            }
+            cbSelect.setOnClickListener { toggleSelection(item.path) }
             btnRestore.setOnClickListener { onRestoreClick(item) }
             btnDelete.setOnClickListener { onDeleteClick(item) }
         }

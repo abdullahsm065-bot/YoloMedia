@@ -42,6 +42,13 @@ class VideosFragment : Fragment() {
     private lateinit var tvTitle: TextView
     private lateinit var btnBack: ImageView
     private lateinit var btnSort: ImageView
+    private lateinit var selectionBar: LinearLayout
+    private lateinit var tvSelectionCount: TextView
+    private lateinit var btnCloseSelection: ImageView
+    private lateinit var btnSelectAll: ImageView
+    private lateinit var btnShareSelected: ImageView
+    private lateinit var btnSafeSelected: ImageView
+    private lateinit var btnDeleteSelected: ImageView
 
     private val folderAdapter = VideoFolderAdapter(
         onFolderClick = { folder -> viewModel.loadVideosInFolder(folder.path, folder.name) },
@@ -73,11 +80,19 @@ class VideosFragment : Fragment() {
         tvTitle = view.findViewById(R.id.tv_title)
         btnBack = view.findViewById(R.id.btn_back)
         btnSort = view.findViewById(R.id.btn_sort)
+        selectionBar = view.findViewById(R.id.selection_bar)
+        tvSelectionCount = view.findViewById(R.id.tv_selection_count)
+        btnCloseSelection = view.findViewById(R.id.btn_close_selection)
+        btnSelectAll = view.findViewById(R.id.btn_select_all)
+        btnShareSelected = view.findViewById(R.id.btn_share_selected)
+        btnSafeSelected = view.findViewById(R.id.btn_safe_selected)
+        btnDeleteSelected = view.findViewById(R.id.btn_delete_selected)
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = folderAdapter
 
         setupListeners()
+        setupSelectionBar()
         observeData()
         applyTheme()
 
@@ -90,11 +105,124 @@ class VideosFragment : Fragment() {
     }
 
     fun handleBackPress(): Boolean {
+        if (videoAdapter.isSelectionMode) {
+            videoAdapter.exitSelectionMode()
+            return true
+        }
         if (viewModel.currentFolder.value != null) {
             viewModel.goBackToFolders()
             return true
         }
         return false
+    }
+
+    private fun setupSelectionBar() {
+        videoAdapter.onSelectionChanged = { count ->
+            if (count > 0) {
+                selectionBar.visibility = View.VISIBLE
+                selectionBar.setBackgroundColor(ThemeManager.getSurfaceColor(requireContext()))
+                tvSelectionCount.text = "$count selected"
+                tvSelectionCount.setTextColor(ThemeManager.getTextPrimaryColor(requireContext()))
+                ThemeManager.tintIcon(btnCloseSelection, requireContext())
+                ThemeManager.tintIconAccent(btnSelectAll, requireContext())
+                ThemeManager.tintIconAccent(btnShareSelected, requireContext())
+                ThemeManager.tintIconAccent(btnSafeSelected, requireContext())
+                btnDeleteSelected.setColorFilter(0xFFE53935.toInt())
+            } else {
+                selectionBar.visibility = View.GONE
+            }
+        }
+
+        btnCloseSelection.setOnClickListener { videoAdapter.exitSelectionMode() }
+
+        btnSelectAll.setOnClickListener { videoAdapter.selectAll() }
+
+        btnDeleteSelected.setOnClickListener {
+            val selected = videoAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            ModernDialog.confirm(
+                context = requireContext(),
+                title = getString(R.string.delete),
+                message = "Delete ${selected.size} selected video(s)?",
+                positiveText = getString(R.string.yes),
+                negativeText = getString(R.string.no),
+                onPositive = {
+                    selected.forEach { viewModel.deleteVideo(it) }
+                    videoAdapter.exitSelectionMode()
+                }
+            )
+        }
+
+        btnShareSelected.setOnClickListener {
+            val selected = videoAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "video/*"
+                val uris = ArrayList<android.net.Uri>()
+                selected.forEach { video ->
+                    val file = File(video.path)
+                    val uri = FileProvider.getUriForFile(
+                        requireContext(),
+                        "${requireContext().packageName}.fileprovider",
+                        file
+                    )
+                    uris.add(uri)
+                }
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.share)))
+        }
+
+        btnSafeSelected.setOnClickListener {
+            val selected = videoAdapter.getSelectedItems()
+            if (selected.isEmpty()) return@setOnClickListener
+            val folderNames = safeViewModel.getSafeFolderNames()
+            if (folderNames.isEmpty()) {
+                ModernDialog.input(
+                    context = requireContext(),
+                    title = getString(R.string.create_folder),
+                    hint = getString(R.string.folder_name),
+                    onConfirm = { name ->
+                        if (name.isNotEmpty()) {
+                            safeViewModel.createFolder(name)
+                            selected.forEach { safeViewModel.moveVideoToSafe(it, name) }
+                            videoAdapter.exitSelectionMode()
+                            viewModel.loadFolders()
+                        }
+                    }
+                )
+            } else {
+                val options = folderNames.toMutableList()
+                options.add("+ Create New Folder")
+                ModernDialog.list(
+                    context = requireContext(),
+                    title = getString(R.string.select_folder),
+                    options = options.toTypedArray(),
+                    onSelect = { which ->
+                        if (which < folderNames.size) {
+                            selected.forEach { safeViewModel.moveVideoToSafe(it, folderNames[which]) }
+                            videoAdapter.exitSelectionMode()
+                            viewModel.loadFolders()
+                        } else {
+                            ModernDialog.input(
+                                context = requireContext(),
+                                title = getString(R.string.create_folder),
+                                hint = getString(R.string.folder_name),
+                                onConfirm = { name ->
+                                    if (name.isNotEmpty()) {
+                                        safeViewModel.createFolder(name)
+                                        selected.forEach { safeViewModel.moveVideoToSafe(it, name) }
+                                        videoAdapter.exitSelectionMode()
+                                        viewModel.loadFolders()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+        }
     }
 
     private fun setupListeners() {
