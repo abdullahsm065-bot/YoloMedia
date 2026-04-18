@@ -126,4 +126,20 @@ class AppPreferences(context: Context) {
     var doubleTapSeekDuration: Int
         get() = prefs.getInt("double_tap_seek_duration", 10)
         set(value) = prefs.edit().putInt("double_tap_seek_duration", value).apply()
+
+    var safeHideFromRecents: Boolean
+        get() = prefs.getBoolean("safe_hide_from_recents", false)
+        set(value) = prefs.edit().putBoolean("safe_hide_from_recents", value).apply()
+
+    var autoRotateVideo: Boolean
+        get() = prefs.getBoolean("auto_rotate_video", true)
+        set(value) = prefs.edit().putBoolean("auto_rotate_video", value).apply()
+
+    var showFileSize: Boolean
+        get() = prefs.getBoolean("show_file_size", true)
+        set(value) = prefs.edit().putBoolean("show_file_size", value).apply()
+
+    var showDurationBadge: Boolean
+        get() = prefs.getBoolean("show_duration_badge", true)
+        set(value) = prefs.edit().putBoolean("show_duration_badge", value).apply()
 }

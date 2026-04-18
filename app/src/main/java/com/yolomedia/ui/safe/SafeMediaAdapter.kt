@@ -21,19 +21,35 @@ class SafeMediaAdapter(
     private val onItemClick: (SafeMediaItem) -> Unit,
     private val onRestoreClick: (SafeMediaItem) -> Unit,
     private val onDeleteClick: (SafeMediaItem) -> Unit
-) : ListAdapter<SafeMediaItem, SafeMediaAdapter.ViewHolder>(DiffCallback()) {
+) : ListAdapter<SafeMediaItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_safe_media, parent, false)
-        return ViewHolder(view)
+    var isGridMode = false
+
+    override fun getItemViewType(position: Int): Int {
+        return if (isGridMode) VIEW_TYPE_GRID else VIEW_TYPE_ROW
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == VIEW_TYPE_GRID) {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_safe_photo, parent, false)
+            GridViewHolder(view)
+        } else {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_safe_media, parent, false)
+            RowViewHolder(view)
+        }
     }
 
-    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val item = getItem(position)
+        when (holder) {
+            is RowViewHolder -> holder.bind(item)
+            is GridViewHolder -> holder.bind(item)
+        }
+    }
+
+    inner class RowViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val cardView: CardView = itemView as CardView
         private val ivThumbnail: ImageView = itemView.findViewById(R.id.iv_thumbnail)
         private val tvName: TextView = itemView.findViewById(R.id.tv_name)
@@ -54,14 +70,32 @@ class SafeMediaAdapter(
             cardView.setCardBackgroundColor(ThemeManager.getCardColor(context))
             tvName.setTextColor(ThemeManager.getTextPrimaryColor(context))
             tvInfo.setTextColor(ThemeManager.getTextSecondaryColor(context))
-
-            val accentColor = ThemeManager.getAccentColor(context)
-            btnRestore.setColorFilter(accentColor)
+            btnRestore.setColorFilter(ThemeManager.getAccentColor(context))
             btnDelete.setColorFilter(ThemeManager.getTextSecondaryColor(context))
 
             Glide.with(context)
                 .load(item.uri)
                 .transform(CenterCrop(), RoundedCorners(16))
+                .placeholder(R.drawable.bg_card_light)
+                .into(ivThumbnail)
+
+            itemView.setOnClickListener { onItemClick(item) }
+            btnRestore.setOnClickListener { onRestoreClick(item) }
+            btnDelete.setOnClickListener { onDeleteClick(item) }
+        }
+    }
+
+    inner class GridViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val ivThumbnail: ImageView = itemView.findViewById(R.id.iv_thumbnail)
+        private val btnRestore: ImageView = itemView.findViewById(R.id.btn_restore)
+        private val btnDelete: ImageView = itemView.findViewById(R.id.btn_delete)
+
+        fun bind(item: SafeMediaItem) {
+            val context = itemView.context
+
+            Glide.with(context)
+                .load(item.uri)
+                .centerCrop()
                 .placeholder(R.drawable.bg_card_light)
                 .into(ivThumbnail)
 
@@ -77,5 +111,10 @@ class SafeMediaAdapter(
 
         override fun areContentsTheSame(oldItem: SafeMediaItem, newItem: SafeMediaItem) =
             oldItem == newItem
+    }
+
+    companion object {
+        private const val VIEW_TYPE_ROW = 0
+        private const val VIEW_TYPE_GRID = 1
     }
 }

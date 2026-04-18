@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -47,15 +48,21 @@ class ImageViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemUI()
-
         setContentView(R.layout.activity_image_viewer)
 
         safeViewModel = ViewModelProvider(this)[SafeViewModel::class.java]
         galleryViewModel = ViewModelProvider(this)[GalleryViewModel::class.java]
 
+        bindViews()
+        loadIntentData()
+        loadImage()
+        setupListeners()
+        animateEntry()
+    }
+
+    private fun bindViews() {
         ivImage = findViewById(R.id.iv_image)
         btnBack = findViewById(R.id.btn_back)
         btnShare = findViewById(R.id.btn_share)
@@ -65,7 +72,9 @@ class ImageViewerActivity : AppCompatActivity() {
         bottomActions = findViewById(R.id.bottom_actions)
         topBar = findViewById(R.id.top_bar)
         tvImageName = findViewById(R.id.tv_image_name)
+    }
 
+    private fun loadIntentData() {
         imageUri = intent.getStringExtra("image_uri")
         imagePath = intent.getStringExtra("image_path")
         imageTitle = intent.getStringExtra("image_title")
@@ -73,22 +82,21 @@ class ImageViewerActivity : AppCompatActivity() {
         imageDateAdded = intent.getLongExtra("image_date", 0)
         imageMimeType = intent.getStringExtra("image_mime") ?: "image/*"
         isSafeMode = intent.getBooleanExtra("safe_mode", false)
-
         tvImageName.text = imageTitle ?: ""
+    }
 
+    private fun loadImage() {
         imageUri?.let { uri ->
-            Glide.with(this)
-                .load(Uri.parse(uri))
-                .into(ivImage)
+            Glide.with(this).load(Uri.parse(uri)).into(ivImage)
         }
-
         if (imagePath != null && imageUri == null) {
-            Glide.with(this)
-                .load(java.io.File(imagePath!!))
-                .into(ivImage)
+            Glide.with(this).load(java.io.File(imagePath!!)).into(ivImage)
         }
+    }
 
+    private fun setupListeners() {
         btnBack.setOnClickListener { finish() }
+        btnBack.setColorFilter(0xFFFFFFFF.toInt())
 
         btnShare.setOnClickListener {
             val shareUri = if (imageUri != null) Uri.parse(imageUri) else {
@@ -137,31 +145,30 @@ class ImageViewerActivity : AppCompatActivity() {
             )
         }
 
-        btnInfo.setOnClickListener {
-            showDetailsDialog()
-        }
+        btnInfo.setOnClickListener { showDetailsDialog() }
 
         if (isSafeMode) {
             btnMoveSafe.visibility = View.GONE
         } else {
-            btnMoveSafe.setOnClickListener {
-                showMoveToSafeDialog()
-            }
+            btnMoveSafe.setOnClickListener { showMoveToSafeDialog() }
         }
+    }
 
-        btnBack.setColorFilter(0xFFFFFFFF.toInt())
+    private fun animateEntry() {
+        bottomActions.translationY = 120f
+        bottomActions.alpha = 0f
+        bottomActions.animate().translationY(0f).alpha(1f)
+            .setDuration(350).setInterpolator(DecelerateInterpolator()).start()
 
-        bottomActions.translationY = 200f
-        bottomActions.animate().translationY(0f).setDuration(400).setInterpolator(DecelerateInterpolator()).start()
         topBar.alpha = 0f
-        topBar.animate().alpha(1f).setDuration(300).start()
+        topBar.animate().alpha(1f).setDuration(250).start()
     }
 
     fun toggleControls() {
         controlsVisible = !controlsVisible
-        val targetAlpha = if (controlsVisible) 1f else 0f
-        ObjectAnimator.ofFloat(topBar, "alpha", targetAlpha).setDuration(250).start()
-        ObjectAnimator.ofFloat(bottomActions, "alpha", targetAlpha).setDuration(250).start()
+        val target = if (controlsVisible) 1f else 0f
+        topBar.animate().alpha(target).setDuration(200).start()
+        bottomActions.animate().alpha(target).setDuration(200).start()
     }
 
     private fun showDetailsDialog() {
@@ -256,15 +263,15 @@ class ImageViewerActivity : AppCompatActivity() {
         )
     }
 
+    @Suppress("DEPRECATION")
     private fun hideSystemUI() {
-        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                )
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        )
     }
 }

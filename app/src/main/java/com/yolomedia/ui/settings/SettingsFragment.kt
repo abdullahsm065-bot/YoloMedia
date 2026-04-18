@@ -60,6 +60,10 @@ class SettingsFragment : Fragment() {
     private lateinit var settingSafeAutoLock: LinearLayout
     private lateinit var tvSafeAutoLockValue: TextView
     private lateinit var switchSafeThumbnails: SwitchCompat
+    private lateinit var switchSafeHideRecents: SwitchCompat
+    private lateinit var switchAutoRotateVideo: SwitchCompat
+    private lateinit var switchShowFileSize: SwitchCompat
+    private lateinit var switchShowDuration: SwitchCompat
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -115,6 +119,10 @@ class SettingsFragment : Fragment() {
         settingSafeAutoLock = view.findViewById(R.id.setting_safe_auto_lock)
         tvSafeAutoLockValue = view.findViewById(R.id.tv_safe_auto_lock_value)
         switchSafeThumbnails = view.findViewById(R.id.switch_safe_thumbnails)
+        switchSafeHideRecents = view.findViewById(R.id.switch_safe_hide_recents)
+        switchAutoRotateVideo = view.findViewById(R.id.switch_auto_rotate_video)
+        switchShowFileSize = view.findViewById(R.id.switch_show_file_size)
+        switchShowDuration = view.findViewById(R.id.switch_show_duration)
     }
 
     private fun setupListeners() {
@@ -185,6 +193,22 @@ class SettingsFragment : Fragment() {
         switchSafeThumbnails.setOnCheckedChangeListener { _, isChecked ->
             preferences.safeShowThumbnails = isChecked
         }
+
+        switchSafeHideRecents.setOnCheckedChangeListener { _, isChecked ->
+            preferences.safeHideFromRecents = isChecked
+        }
+
+        switchAutoRotateVideo.setOnCheckedChangeListener { _, isChecked ->
+            preferences.autoRotateVideo = isChecked
+        }
+
+        switchShowFileSize.setOnCheckedChangeListener { _, isChecked ->
+            preferences.showFileSize = isChecked
+        }
+
+        switchShowDuration.setOnCheckedChangeListener { _, isChecked ->
+            preferences.showDurationBadge = isChecked
+        }
     }
 
     private fun loadPreferences() {
@@ -197,6 +221,10 @@ class SettingsFragment : Fragment() {
         switchLoopVideos.isChecked = preferences.loopVideos
         switchVideoGestures.isChecked = preferences.videoGesturesEnabled
         switchSafeThumbnails.isChecked = preferences.safeShowThumbnails
+        switchSafeHideRecents.isChecked = preferences.safeHideFromRecents
+        switchAutoRotateVideo.isChecked = preferences.autoRotateVideo
+        switchShowFileSize.isChecked = preferences.showFileSize
+        switchShowDuration.isChecked = preferences.showDurationBadge
         updatePlaybackSpeedText()
         updateThumbnailQualityText()
         updateGridColumnsText()

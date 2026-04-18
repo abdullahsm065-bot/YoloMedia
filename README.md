@@ -7,7 +7,7 @@ A modern, feature-rich native Android media player and gallery app built with Ko
 ### Videos
 - Auto-scan and display all videos from device storage via MediaStore API
 - Group videos by folders with thumbnails and media count
-- Built-in video player using ExoPlayer with play/pause/seek/fullscreen
+- Custom MediaPlayer-based video player with auto-orientation, gesture controls, frame scrubbing
 - Video options: delete, details, move to Safe, share
 
 ### Gallery
@@ -35,14 +35,14 @@ A modern, feature-rich native Android media player and gallery app built with Ko
 - **MVVM** with ViewModel + LiveData
 - **Repository pattern** for data access
 - **MediaStore API** for scoped storage support (Android 10+)
-- **ExoPlayer (Media3)** for video playback
+- **Custom MediaPlayer** for video playback with frame scrubbing
 - **Glide** for image/video thumbnail loading
 - **AndroidX Biometric** for secure authentication
 
 ## Tech Stack
 - Kotlin
 - AndroidX (AppCompat, ConstraintLayout, RecyclerView, CardView, Navigation)
-- Media3 ExoPlayer
+- Custom MediaPlayer (built-in, no external dependency)
 - Glide
 - Biometric API
 - ViewBinding

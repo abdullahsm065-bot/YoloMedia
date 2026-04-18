@@ -3,8 +3,8 @@ package com.yolomedia.ui.player
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
@@ -12,16 +12,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
-import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -65,16 +64,15 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var playbackPosition: Int = 0
     private var playWhenReady = true
     private var controlsVisible = true
-    private var currentSpeedIndex = 2
     private var isPrepared = false
     private var isSeeking = false
     private var controlsLocked = false
     private var isLooping = false
+    private var currentSpeedIndex = 3
 
     private val speeds = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f)
     private val speedLabels = arrayOf("0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "3x")
-
-    private var aspectModes = arrayOf("Fit", "Fill", "Crop", "16:9", "4:3")
+    private val aspectModes = arrayOf("Fit", "Fill", "Crop", "16:9", "4:3")
     private var currentAspect = 0
 
     private val handler = Handler(Looper.getMainLooper())
@@ -82,7 +80,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private val updateProgressRunnable = object : Runnable {
         override fun run() {
             updateProgress()
-            handler.postDelayed(this, 200)
+            handler.postDelayed(this, 250)
         }
     }
 
@@ -91,22 +89,13 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var scaleGestureDetector: ScaleGestureDetector
 
     private var videoScale = 1f
-    private var videoPanX = 0f
-    private var videoPanY = 0f
-    private var initialBrightness = -1f
-    private var initialVolume = -1
     private var audioManager: AudioManager? = null
-    private var swipeStartY = 0f
-    private var swipeStartX = 0f
-    private var isSwipingBrightness = false
-    private var isSwipingVolume = false
+    private var orientationSet = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemUI()
-
         setContentView(R.layout.activity_video_player)
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -118,8 +107,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         tvVideoTitle.text = videoTitle ?: ""
 
         val prefs = AppPreferences(this)
-        val defaultSpeed = prefs.defaultPlaybackSpeed
-        currentSpeedIndex = speeds.indexOfFirst { it == defaultSpeed }.coerceAtLeast(3)
+        currentSpeedIndex = speeds.indexOfFirst { it == prefs.defaultPlaybackSpeed }.coerceAtLeast(3)
+        isLooping = prefs.loopVideos
 
         setupGestures()
         setupListeners()
@@ -131,12 +120,35 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
 
         markVideoAsPlayed()
+        detectVideoOrientation()
     }
 
     private fun markVideoAsPlayed() {
-        videoUri?.let {
-            AppPreferences(this).markVideoPlayed(it)
-        }
+        videoUri?.let { AppPreferences(this).markVideoPlayed(it) }
+    }
+
+    private fun detectVideoOrientation() {
+        if (orientationSet) return
+        try {
+            val r = MediaMetadataRetriever()
+            r.setDataSource(this, Uri.parse(videoUri))
+            val w = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val h = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            r.release()
+
+            val effectiveW = if (rotation == 90 || rotation == 270) h else w
+            val effectiveH = if (rotation == 90 || rotation == 270) w else h
+
+            if (effectiveW > 0 && effectiveH > 0) {
+                requestedOrientation = if (effectiveW > effectiveH) {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                }
+                orientationSet = true
+            }
+        } catch (_: Exception) {}
     }
 
     private fun bindViews() {
@@ -169,9 +181,7 @@ class VideoPlayerActivity : AppCompatActivity() {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 initializePlayer(holder)
             }
-
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-
             override fun surfaceDestroyed(holder: SurfaceHolder) {
                 releasePlayer()
             }
@@ -179,9 +189,13 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun setupGestures() {
+        val prefs = AppPreferences(this)
+        val seekDuration = prefs.doubleTapSeekDuration * 1000
+
         scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
-                videoScale = (videoScale * detector.scaleFactor).coerceIn(0.5f, 4f)
+                if (!prefs.videoGesturesEnabled) return false
+                videoScale = (videoScale * detector.scaleFactor).coerceIn(0.5f, 5f)
                 surfaceView.scaleX = videoScale
                 surfaceView.scaleY = videoScale
                 return true
@@ -192,26 +206,25 @@ class VideoPlayerActivity : AppCompatActivity() {
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 if (controlsLocked) return false
                 val screenWidth = resources.displayMetrics.widthPixels
-                val x = e.x
                 when {
-                    x < screenWidth / 3f -> {
+                    e.x < screenWidth / 3f -> {
                         mediaPlayer?.let { mp ->
-                            mp.seekTo(maxOf(0, mp.currentPosition - 10000))
-                            showGestureInfo("-10s")
+                            mp.seekTo(maxOf(0, mp.currentPosition - seekDuration))
+                            showGestureInfo("-${seekDuration / 1000}s")
                         }
                     }
-                    x > screenWidth * 2 / 3f -> {
+                    e.x > screenWidth * 2 / 3f -> {
                         mediaPlayer?.let { mp ->
-                            if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + 10000))
-                            showGestureInfo("+10s")
+                            if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + seekDuration))
+                            showGestureInfo("+${seekDuration / 1000}s")
                         }
                     }
                     else -> {
                         if (videoScale != 1f) {
                             videoScale = 1f
-                            videoPanX = 0f
-                            videoPanY = 0f
-                            surfaceView.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f).setDuration(200).start()
+                            surfaceView.animate().scaleX(1f).scaleY(1f)
+                                .translationX(0f).translationY(0f)
+                                .setDuration(250).setInterpolator(DecelerateInterpolator()).start()
                         } else {
                             togglePlayPause()
                         }
@@ -221,14 +234,12 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
 
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                if (!controlsLocked) {
-                    toggleControls()
-                }
+                if (!controlsLocked) toggleControls()
                 return true
             }
 
             override fun onLongPress(e: MotionEvent) {
-                if (controlsLocked) return
+                if (controlsLocked || !prefs.videoGesturesEnabled) return
                 mediaPlayer?.let { mp ->
                     if (mp.isPlaying) {
                         mp.setPlaybackParams(mp.playbackParams.setSpeed(2f))
@@ -238,12 +249,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (controlsLocked || scaleGestureDetector.isInProgress) return false
+                if (controlsLocked || scaleGestureDetector.isInProgress || !prefs.videoGesturesEnabled) return false
                 if (e1 == null) return false
-
-                val screenWidth = resources.displayMetrics.widthPixels
-                val screenHeight = resources.displayMetrics.heightPixels
-                val deltaY = e1.y - e2.y
 
                 if (videoScale > 1.1f) {
                     surfaceView.translationX -= distanceX
@@ -251,13 +258,15 @@ class VideoPlayerActivity : AppCompatActivity() {
                     return true
                 }
 
+                val screenWidth = resources.displayMetrics.widthPixels
+                val screenHeight = resources.displayMetrics.heightPixels
+                val deltaY = e1.y - e2.y
+
                 if (e1.x < screenWidth / 3f) {
-                    val brightnessChange = deltaY / screenHeight
-                    adjustBrightness(brightnessChange)
+                    adjustBrightness(deltaY / screenHeight)
                     return true
                 } else if (e1.x > screenWidth * 2 / 3f) {
-                    val volumeChange = deltaY / screenHeight
-                    adjustVolume(volumeChange)
+                    adjustVolume(deltaY / screenHeight)
                     return true
                 }
                 return false
@@ -266,34 +275,37 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun adjustBrightness(change: Float) {
-        val layoutParams = window.attributes
-        var brightness = layoutParams.screenBrightness
+        val lp = window.attributes
+        var brightness = lp.screenBrightness
         if (brightness < 0) brightness = 0.5f
         brightness = (brightness + change * 0.5f).coerceIn(0.01f, 1f)
-        layoutParams.screenBrightness = brightness
-        window.attributes = layoutParams
-        val pct = (brightness * 100).toInt()
-        showGestureInfo("Brightness: $pct%")
+        lp.screenBrightness = brightness
+        window.attributes = lp
+        showGestureInfo("Brightness: ${(brightness * 100).toInt()}%")
     }
 
     private fun adjustVolume(change: Float) {
         val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-        val currentVol = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-        val newVol = (currentVol + change * maxVol * 0.3f).toInt().coerceIn(0, maxVol)
+        val curVol = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
+        val newVol = (curVol + change * maxVol * 0.3f).toInt().coerceIn(0, maxVol)
         audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
-        val pct = (newVol * 100) / maxVol
-        showGestureInfo("Volume: $pct%")
+        showGestureInfo("Volume: ${(newVol * 100) / maxVol}%")
     }
 
     private fun showGestureInfo(text: String) {
         gestureInfoView.text = text
         gestureInfoView.alpha = 1f
         gestureInfoView.visibility = View.VISIBLE
+        gestureInfoView.scaleX = 0.8f
+        gestureInfoView.scaleY = 0.8f
+        gestureInfoView.animate().scaleX(1f).scaleY(1f).setDuration(150)
+            .setInterpolator(OvershootInterpolator(2f)).start()
         handler.removeCallbacksAndMessages(gestureInfoView)
         handler.postDelayed({
-            gestureInfoView.animate().alpha(0f).setDuration(300).withEndAction {
-                gestureInfoView.visibility = View.GONE
-            }.start()
+            gestureInfoView.animate().alpha(0f).scaleX(0.9f).scaleY(0.9f)
+                .setDuration(200).withEndAction {
+                    gestureInfoView.visibility = View.GONE
+                }.start()
         }, 800)
     }
 
@@ -303,7 +315,6 @@ class VideoPlayerActivity : AppCompatActivity() {
         controlsOverlay.setOnTouchListener { _, event ->
             scaleGestureDetector.onTouchEvent(event)
             gestureDetector.onTouchEvent(event)
-
             if (event.action == MotionEvent.ACTION_UP) {
                 mediaPlayer?.let { mp ->
                     if (mp.isPlaying) {
@@ -324,10 +335,14 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
         }
 
+        val prefs = AppPreferences(this)
+        val seekMs = prefs.doubleTapSeekDuration * 1000
+
         btnSeekBack.setOnClickListener {
             if (!controlsLocked) {
                 mediaPlayer?.let { mp ->
-                    mp.seekTo(maxOf(0, mp.currentPosition - 10_000))
+                    mp.seekTo(maxOf(0, mp.currentPosition - seekMs))
+                    animateSeekButton(btnSeekBack)
                     resetHideTimer()
                 }
             }
@@ -336,7 +351,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         btnSeekForward.setOnClickListener {
             if (!controlsLocked) {
                 mediaPlayer?.let { mp ->
-                    if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + 10_000))
+                    if (isPrepared) mp.seekTo(minOf(mp.duration, mp.currentPosition + seekMs))
+                    animateSeekButton(btnSeekForward)
                     resetHideTimer()
                 }
             }
@@ -353,8 +369,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         btnLock.setOnClickListener {
             controlsLocked = !controlsLocked
-            btnLock.setImageResource(if (controlsLocked) R.drawable.ic_lock else R.drawable.ic_lock)
-            btnLock.alpha = if (controlsLocked) 1f else 0.7f
+            btnLock.alpha = if (controlsLocked) 1f else 0.8f
             topControls.visibility = if (controlsLocked) View.GONE else View.VISIBLE
             centerControls.visibility = if (controlsLocked) View.GONE else View.VISIBLE
             bottomControls.visibility = if (controlsLocked) View.GONE else View.VISIBLE
@@ -367,9 +382,9 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         btnRotate.setOnClickListener {
             requestedOrientation = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             } else {
-                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             }
         }
 
@@ -386,13 +401,15 @@ class VideoPlayerActivity : AppCompatActivity() {
             Toast.makeText(this, "Aspect: ${aspectModes[currentAspect]}", Toast.LENGTH_SHORT).show()
         }
 
+        btnLoop.alpha = if (isLooping) 1f else 0.5f
+
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && isPrepared) {
                     mediaPlayer?.let { mp ->
                         val position = (progress.toLong() * mp.duration) / 1000
                         tvCurrentTime.text = FormatUtils.formatDuration(position)
-                        showFramePreview(position)
+                        scrubFrame(position)
                     }
                 }
             }
@@ -400,7 +417,6 @@ class VideoPlayerActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(bar: SeekBar?) {
                 isSeeking = true
                 handler.removeCallbacks(hideControlsRunnable)
-                previewFrame.visibility = View.VISIBLE
             }
 
             override fun onStopTrackingTouch(bar: SeekBar?) {
@@ -417,10 +433,21 @@ class VideoPlayerActivity : AppCompatActivity() {
         })
     }
 
-    private fun showFramePreview(positionMs: Long) {
+    private fun animateSeekButton(view: View) {
+        view.animate().scaleX(0.8f).scaleY(0.8f).setDuration(100)
+            .withEndAction {
+                view.animate().scaleX(1f).scaleY(1f).setDuration(150)
+                    .setInterpolator(OvershootInterpolator(3f)).start()
+            }.start()
+    }
+
+    private fun scrubFrame(positionMs: Long) {
         try {
             retriever?.let { r ->
-                val bitmap = r.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                val bitmap = r.getFrameAtTime(
+                    positionMs * 1000,
+                    MediaMetadataRetriever.OPTION_CLOSEST
+                )
                 bitmap?.let {
                     previewFrame.setImageBitmap(it)
                     previewFrame.visibility = View.VISIBLE
@@ -455,18 +482,31 @@ class VideoPlayerActivity : AppCompatActivity() {
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(this@VideoPlayerActivity, Uri.parse(uri))
                 setDisplay(holder)
+
                 setOnPreparedListener { mp ->
                     isPrepared = true
                     bufferingIndicator.visibility = View.GONE
                     tvDuration.text = FormatUtils.formatDuration(mp.duration.toLong())
 
-                    if (playbackPosition > 0) {
-                        mp.seekTo(playbackPosition)
+                    if (!orientationSet) {
+                        val vw = mp.videoWidth
+                        val vh = mp.videoHeight
+                        if (vw > 0 && vh > 0) {
+                            requestedOrientation = if (vw > vh) {
+                                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            } else {
+                                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                            }
+                            orientationSet = true
+                        }
                     }
+
+                    if (playbackPosition > 0) mp.seekTo(playbackPosition)
                     if (playWhenReady) {
                         mp.start()
                         mp.setPlaybackParams(mp.playbackParams.setSpeed(speeds[currentSpeedIndex]))
                     }
+                    mp.isLooping = isLooping
                     btnSpeed.text = speedLabels[currentSpeedIndex]
                     updatePlayPauseIcon()
                     handler.post(updateProgressRunnable)
@@ -482,7 +522,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     }
                 }
 
-                setOnErrorListener { _, what, extra ->
+                setOnErrorListener { _, _, _ ->
                     bufferingIndicator.visibility = View.GONE
                     Toast.makeText(this@VideoPlayerActivity, "Playback error", Toast.LENGTH_SHORT).show()
                     true
@@ -518,29 +558,28 @@ class VideoPlayerActivity : AppCompatActivity() {
 
             val screenWidth = resources.displayMetrics.widthPixels.toFloat()
             val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-
             val params = surfaceView.layoutParams as FrameLayout.LayoutParams
 
             when (currentAspect) {
-                0 -> { // Fit
+                0 -> {
                     val ratio = minOf(screenWidth / videoWidth, screenHeight / videoHeight)
                     params.width = (videoWidth * ratio).toInt()
                     params.height = (videoHeight * ratio).toInt()
                 }
-                1 -> { // Fill
+                1 -> {
                     params.width = screenWidth.toInt()
                     params.height = screenHeight.toInt()
                 }
-                2 -> { // Crop
+                2 -> {
                     val ratio = maxOf(screenWidth / videoWidth, screenHeight / videoHeight)
                     params.width = (videoWidth * ratio).toInt()
                     params.height = (videoHeight * ratio).toInt()
                 }
-                3 -> { // 16:9
+                3 -> {
                     params.width = screenWidth.toInt()
                     params.height = (screenWidth * 9 / 16).toInt()
                 }
-                4 -> { // 4:3
+                4 -> {
                     params.width = screenWidth.toInt()
                     params.height = (screenWidth * 3 / 4).toInt()
                 }
@@ -562,10 +601,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
         mediaPlayer = null
         isPrepared = false
-
-        try {
-            retriever?.release()
-        } catch (_: Exception) {}
+        try { retriever?.release() } catch (_: Exception) {}
         retriever = null
     }
 
@@ -587,13 +623,12 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun updatePlayPauseIcon() {
         val isPlaying = mediaPlayer?.isPlaying == true
         ivPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
-
-        val scaleX = ObjectAnimator.ofFloat(ivPlayPause, "scaleX", 0.7f, 1f)
-        val scaleY = ObjectAnimator.ofFloat(ivPlayPause, "scaleY", 0.7f, 1f)
+        val scaleX = ObjectAnimator.ofFloat(ivPlayPause, "scaleX", 0.6f, 1f)
+        val scaleY = ObjectAnimator.ofFloat(ivPlayPause, "scaleY", 0.6f, 1f)
         AnimatorSet().apply {
             playTogether(scaleX, scaleY)
             duration = 200
-            interpolator = DecelerateInterpolator()
+            interpolator = OvershootInterpolator(2f)
             start()
         }
     }
@@ -635,7 +670,8 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun animateView(view: View, show: Boolean) {
         view.animate()
             .alpha(if (show) 1f else 0f)
-            .setDuration(250)
+            .setDuration(200)
+            .setInterpolator(DecelerateInterpolator())
             .withStartAction { if (show) view.visibility = View.VISIBLE }
             .withEndAction { if (!show) view.visibility = View.GONE }
             .start()
@@ -646,15 +682,15 @@ class VideoPlayerActivity : AppCompatActivity() {
         handler.postDelayed(hideControlsRunnable, 4000)
     }
 
+    @Suppress("DEPRECATION")
     private fun hideSystemUI() {
-        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                )
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        )
     }
 }

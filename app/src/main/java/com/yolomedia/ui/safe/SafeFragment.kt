@@ -329,12 +329,14 @@ class SafeFragment : Fragment() {
         emptyFolders.visibility = View.GONE
 
         if (showingVideos) {
+            mediaAdapter.isGridMode = false
             recyclerSafe.adapter = mediaAdapter
             recyclerSafe.layoutManager = LinearLayoutManager(requireContext())
             mediaAdapter.submitList(viewModel.safeVideos.value ?: emptyList())
             emptyVideos.visibility = if (viewModel.safeVideos.value.isNullOrEmpty()) View.VISIBLE else View.GONE
             emptyPhotos.visibility = View.GONE
         } else {
+            mediaAdapter.isGridMode = true
             recyclerSafe.adapter = mediaAdapter
             recyclerSafe.layoutManager = GridLayoutManager(requireContext(), 3)
             mediaAdapter.submitList(viewModel.safePhotos.value ?: emptyList())
