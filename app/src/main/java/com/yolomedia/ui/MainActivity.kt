@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -207,8 +208,8 @@ class MainActivity : AppCompatActivity() {
 
     fun applyThemeColors() {
         val bgColor = ThemeManager.getBackgroundColor(this)
-        val navColor = ThemeManager.getNavBarColor(this)
         val accentColor = ThemeManager.getAccentColor(this)
+        val isDark = ThemeManager.isDarkMode(this)
 
         mainContainer.setBackgroundColor(bgColor)
 
@@ -229,7 +230,22 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav.itemIconTintList = iconTint
         bottomNav.itemTextColor = textTint
-        bottomNav.setBackgroundColor(navColor)
+
+        val style = preferences.bottomBarStyle
+        if (style == BottomBarStyle.FLOATING) {
+            val glassDrawable = GradientDrawable().apply {
+                setColor(if (isDark) 0xB30F1729.toInt() else 0xD9FFFFFF.toInt())
+                cornerRadius = 28f * resources.displayMetrics.density
+                setStroke(
+                    (1 * resources.displayMetrics.density).toInt(),
+                    if (isDark) 0x1AFFFFFF else 0x18000000
+                )
+            }
+            bottomNav.background = glassDrawable
+        } else {
+            val navBgColor = if (isDark) 0xCC0F1729.toInt() else 0xE6FFFFFF.toInt()
+            bottomNav.setBackgroundColor(navBgColor)
+        }
 
         ThemeManager.applyThemeToActivity(this)
     }
@@ -237,23 +253,37 @@ class MainActivity : AppCompatActivity() {
     fun applyBottomBarStyle() {
         val style = preferences.bottomBarStyle
         val params = bottomNavContainer.layoutParams as ViewGroup.MarginLayoutParams
+        val density = resources.displayMetrics.density
+        val isDark = ThemeManager.isDarkMode(this)
 
         when (style) {
             BottomBarStyle.FIXED -> {
                 params.setMargins(0, 0, 0, 0)
-                bottomNav.background = ContextCompat.getDrawable(this, R.drawable.bg_bottom_nav)
-                bottomNav.elevation = 8f * resources.displayMetrics.density
+                val navBgColor = if (isDark) 0xCC0F1729.toInt() else 0xE6FFFFFF.toInt()
+                bottomNav.setBackgroundColor(navBgColor)
+                bottomNav.elevation = 8f * density
             }
             BottomBarStyle.FLOATING -> {
-                val margin = (16 * resources.displayMetrics.density).toInt()
-                params.setMargins(margin, 0, margin, margin)
-                bottomNav.background = ContextCompat.getDrawable(this, R.drawable.bg_floating_nav)
-                bottomNav.elevation = 12f * resources.displayMetrics.density
+                val hMargin = (16 * density).toInt()
+                val bMargin = (16 * density).toInt()
+                params.setMargins(hMargin, 0, hMargin, bMargin)
+
+                val glassDrawable = GradientDrawable().apply {
+                    setColor(if (isDark) 0xB30F1729.toInt() else 0xD9FFFFFF.toInt())
+                    cornerRadius = 28f * density
+                    setStroke(
+                        (1 * density).toInt(),
+                        if (isDark) 0x1AFFFFFF else 0x18000000
+                    )
+                }
+                bottomNav.background = glassDrawable
+                bottomNav.elevation = 16f * density
             }
             BottomBarStyle.COMPACT -> {
                 params.setMargins(0, 0, 0, 0)
-                bottomNav.setBackgroundColor(ThemeManager.getNavBarColor(this))
-                bottomNav.elevation = 4f * resources.displayMetrics.density
+                val navBgColor = if (isDark) 0xCC0F1729.toInt() else 0xE6FFFFFF.toInt()
+                bottomNav.setBackgroundColor(navBgColor)
+                bottomNav.elevation = 4f * density
                 bottomNav.labelVisibilityMode = BottomNavigationView.LABEL_VISIBILITY_SELECTED
             }
         }

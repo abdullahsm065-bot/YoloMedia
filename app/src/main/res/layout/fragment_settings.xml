@@ -147,6 +147,33 @@
                 android:textColor="@color/light_text_secondary" />
         </LinearLayout>
 
+        <!-- Grid Columns -->
+        <LinearLayout
+            android:id="@+id/setting_grid_columns"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp"
+            android:background="?android:attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_grid_columns"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_primary" />
+
+            <TextView
+                android:id="@+id/tv_grid_columns_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/settings_grid_columns_desc"
+                android:textSize="13sp"
+                android:textColor="@color/light_text_secondary" />
+        </LinearLayout>
+
         <!-- Sort Order -->
         <LinearLayout
             android:id="@+id/setting_sort"
@@ -211,6 +238,84 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
+        <!-- Playback Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="8dp"
+            android:text="@string/settings_playback"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/accent_blue"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1" />
+
+        <!-- Auto-play -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_auto_play"
+                    android:textSize="16sp"
+                    android:textColor="@color/light_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_auto_play_desc"
+                    android:textSize="13sp"
+                    android:textColor="@color/light_text_secondary" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_auto_play"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Default Playback Speed -->
+        <LinearLayout
+            android:id="@+id/setting_playback_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp"
+            android:background="?android:attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_default_speed"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_primary" />
+
+            <TextView
+                android:id="@+id/tv_playback_speed_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/speed_1x"
+                android:textSize="13sp"
+                android:textColor="@color/light_text_secondary" />
+        </LinearLayout>
+
         <!-- Navigation Section -->
         <TextView
             android:layout_width="match_parent"
@@ -247,7 +352,199 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="@string/bar_fixed"
+                android:text="@string/bar_floating"
+                android:textSize="13sp"
+                android:textColor="@color/light_text_secondary" />
+        </LinearLayout>
+
+        <!-- Privacy & Security Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="8dp"
+            android:text="@string/settings_privacy"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/accent_blue"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1" />
+
+        <!-- Confirm Before Delete -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_confirm_delete"
+                    android:textSize="16sp"
+                    android:textColor="@color/light_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_confirm_delete_desc"
+                    android:textSize="13sp"
+                    android:textColor="@color/light_text_secondary" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_confirm_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Biometric -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_biometric"
+                    android:textSize="16sp"
+                    android:textColor="@color/light_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_biometric_desc"
+                    android:textSize="13sp"
+                    android:textColor="@color/light_text_secondary" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_biometric"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Change PIN -->
+        <LinearLayout
+            android:id="@+id/setting_change_pin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp"
+            android:background="?android:attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_change_pin"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/settings_change_pin_desc"
+                android:textSize="13sp"
+                android:textColor="@color/light_text_secondary" />
+        </LinearLayout>
+
+        <!-- Advanced Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="8dp"
+            android:text="@string/settings_advanced"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/accent_blue"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1" />
+
+        <!-- Hide System Bars -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_hide_system_bars"
+                    android:textSize="16sp"
+                    android:textColor="@color/light_text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_hide_system_bars_desc"
+                    android:textSize="13sp"
+                    android:textColor="@color/light_text_secondary" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_hide_system_bars"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Thumbnail Quality -->
+        <LinearLayout
+            android:id="@+id/setting_thumbnail_quality"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="14dp"
+            android:background="?android:attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_thumbnail_quality"
+                android:textSize="16sp"
+                android:textColor="@color/light_text_primary" />
+
+            <TextView
+                android:id="@+id/tv_thumbnail_quality_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/quality_medium"
                 android:textSize="13sp"
                 android:textColor="@color/light_text_secondary" />
         </LinearLayout>

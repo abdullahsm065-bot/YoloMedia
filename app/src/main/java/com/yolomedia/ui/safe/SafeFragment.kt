@@ -188,10 +188,16 @@ class SafeFragment : Fragment() {
             loadCurrentContent()
         }
 
-        // Check biometric availability
+        updateBiometricVisibility()
+    }
+
+    private fun updateBiometricVisibility() {
         val biometricManager = BiometricManager.from(requireContext())
-        val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-        btnBiometric.visibility = if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS &&
+        val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+        val canWeak = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+        val canAuthenticate = canStrong == BiometricManager.BIOMETRIC_SUCCESS ||
+                canWeak == BiometricManager.BIOMETRIC_SUCCESS
+        btnBiometric.visibility = if (canAuthenticate &&
             viewModel.preferences.isSafeSetup && viewModel.preferences.biometricEnabled) {
             View.VISIBLE
         } else {
@@ -362,13 +368,30 @@ class SafeFragment : Fragment() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
                 }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                }
             })
 
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(getString(R.string.biometric_prompt_title))
-            .setSubtitle(getString(R.string.biometric_prompt_subtitle))
-            .setNegativeButtonText(getString(R.string.biometric_prompt_cancel))
-            .build()
+        val biometricManager = BiometricManager.from(requireContext())
+        val canStrong = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+
+        val promptInfo = if (canStrong) {
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.biometric_prompt_title))
+                .setSubtitle(getString(R.string.biometric_prompt_subtitle))
+                .setNegativeButtonText(getString(R.string.biometric_prompt_cancel))
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                .build()
+        } else {
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.biometric_prompt_title))
+                .setSubtitle(getString(R.string.biometric_prompt_subtitle))
+                .setNegativeButtonText(getString(R.string.biometric_prompt_cancel))
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                .build()
+        }
 
         biometricPrompt.authenticate(promptInfo)
     }
