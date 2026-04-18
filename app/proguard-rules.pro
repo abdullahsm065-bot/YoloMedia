@@ -1,0 +1,3 @@
+-keepattributes *Annotation*
+-keep class com.yolomedia.data.model.** { *; }
+-dontwarn com.yolomedia.**

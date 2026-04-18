@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YoloMedia</string>
+
+    <!-- Navigation -->
+    <string name="nav_videos">Videos</string>
+    <string name="nav_gallery">Gallery</string>
+    <string name="nav_safe">Safe</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Videos -->
+    <string name="videos_title">Videos</string>
+    <string name="no_videos">No videos found</string>
+    <string name="no_videos_desc">Videos from your device will appear here</string>
+    <string name="video_folders">Video Folders</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">Gallery</string>
+    <string name="no_images">No images found</string>
+    <string name="no_images_desc">Images from your device will appear here</string>
+
+    <!-- Safe -->
+    <string name="safe_title">Safe</string>
+    <string name="safe_locked">Your Safe is Locked</string>
+    <string name="safe_locked_desc">Enter your PIN or use biometrics to unlock</string>
+    <string name="enter_pin">Enter PIN</string>
+    <string name="setup_pin">Set Up PIN</string>
+    <string name="confirm_pin">Confirm PIN</string>
+    <string name="pin_mismatch">PINs don\'t match. Try again.</string>
+    <string name="wrong_pin">Wrong PIN. Try again.</string>
+    <string name="use_fingerprint">Use Fingerprint</string>
+    <string name="biometric_prompt_title">Unlock Safe</string>
+    <string name="biometric_prompt_subtitle">Use your biometric to unlock</string>
+    <string name="biometric_prompt_cancel">Cancel</string>
+    <string name="create_folder">Create Folder</string>
+    <string name="folder_name">Folder Name</string>
+    <string name="no_safe_folders">No folders yet</string>
+    <string name="no_safe_folders_desc">Create a folder to start securing your media</string>
+    <string name="videos_tab">Videos</string>
+    <string name="photos_tab">Photos</string>
+    <string name="no_safe_videos">No videos in this folder</string>
+    <string name="no_safe_photos">No photos in this folder</string>
+
+    <!-- Actions -->
+    <string name="delete">Delete</string>
+    <string name="share">Share</string>
+    <string name="details">Details</string>
+    <string name="move_to_safe">Move to Safe</string>
+    <string name="restore">Restore</string>
+    <string name="rename">Rename</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="ok">OK</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+
+    <!-- Details Dialog -->
+    <string name="detail_name">Name</string>
+    <string name="detail_path">Path</string>
+    <string name="detail_size">Size</string>
+    <string name="detail_duration">Duration</string>
+    <string name="detail_resolution">Resolution</string>
+    <string name="detail_date">Date Added</string>
+    <string name="detail_type">Type</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_accent_color">Accent Color</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_view_mode">View Mode</string>
+    <string name="settings_grid_columns">Grid Columns</string>
+    <string name="settings_sort_order">Sort Order</string>
+    <string name="settings_animations">Enable Animations</string>
+    <string name="settings_navigation">Navigation</string>
+    <string name="settings_bottom_bar_style">Bottom Bar Style</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_app_info">YoloMedia v1.0\nModern Media Player &amp; Gallery</string>
+
+    <!-- Theme Options -->
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+
+    <!-- View Mode Options -->
+    <string name="view_grid">Grid</string>
+    <string name="view_list">List</string>
+
+    <!-- Sort Options -->
+    <string name="sort_name_asc">Name (A-Z)</string>
+    <string name="sort_name_desc">Name (Z-A)</string>
+    <string name="sort_date_asc">Date (Oldest)</string>
+    <string name="sort_date_desc">Date (Newest)</string>
+    <string name="sort_size_asc">Size (Smallest)</string>
+    <string name="sort_size_desc">Size (Largest)</string>
+
+    <!-- Bottom Bar Style Options -->
+    <string name="bar_fixed">Fixed</string>
+    <string name="bar_floating">Floating</string>
+    <string name="bar_compact">Compact</string>
+
+    <!-- Permissions -->
+    <string name="permission_required">Permission Required</string>
+    <string name="permission_desc">YoloMedia needs access to your media files to display videos and images.</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="open_settings">Open Settings</string>
+
+    <!-- Confirmation -->
+    <string name="confirm_delete">Are you sure you want to delete this file?</string>
+    <string name="confirm_move_safe">Move this file to Safe?</string>
+    <string name="select_folder">Select Folder</string>
+    <string name="moved_successfully">Moved successfully!</string>
+    <string name="restored_successfully">Restored successfully!</string>
+</resources>
